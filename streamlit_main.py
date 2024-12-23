@@ -6,6 +6,8 @@ from langchain.vectorstores import Pinecone
 from langchain.chat_models import HuggingFaceHub
 from langchain.memory import ConversationBufferMemory
 from langchain.chains import ConversationalRetrievalChain
+from langchain.embeddings import HuggingFaceEmbeddings
+
 import pinecone
 import os
 import io
