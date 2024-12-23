@@ -48,16 +48,20 @@ def get_text_chunks(text):
     return chunks
 
 def get_vectorstore(text_chunks, index_name):
-    """
-    Create vector embeddings for the PDF chunks and store them in Pinecone.
-    """
-    embeddings = HuggingFaceInstructEmbeddings(model_name="meta-llama/Llama-3.3-70B-Instruct")
-    vectorstore = Pinecone.from_texts(
-        texts=text_chunks, 
-        embedding=embeddings, 
-        index_name=index_name
-    )
-    return vectorstore
+    st.write("Generating embeddings...")
+    try:
+        embeddings = HuggingFaceInstructEmbeddings(model_name="hkunlp/instructor-xl")
+        vectorstore = Pinecone.from_texts(
+            texts=text_chunks, 
+            embedding=embeddings, 
+            index_name=index_name
+        )
+        st.write("Embeddings generated successfully.")
+        return vectorstore
+    except Exception as e:
+        st.error(f"Error generating embeddings: {e}")
+        return None
+
 
 def get_conversation_chain(vectorstore):
     """
