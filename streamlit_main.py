@@ -86,7 +86,6 @@ def handle_userinput(user_question):
             st.write(f"<p style='color:green;'>Bot: {message.content}</p>", unsafe_allow_html=True)
 
 def main():
-    load_dotenv()
     st.set_page_config(page_title="Chat with PDF", page_icon=":book:")
 
     if "conversation" not in st.session_state:
