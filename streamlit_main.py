@@ -3,16 +3,16 @@ from PyPDF2 import PdfReader
 from langchain.text_splitter import CharacterTextSplitter
 from langchain.embeddings import HuggingFaceInstructEmbeddings
 from langchain.vectorstores import Pinecone
-from langchain.chat_models import ChatOpenAI
+from langchain.chat_models import HuggingFaceHub
 from langchain.memory import ConversationBufferMemory
 from langchain.chains import ConversationalRetrievalChain
 import pinecone
 import os
 import io
 
+# Set up environment variables for Pinecone and HuggingFace API keys
 os.environ['PINECONE_API_KEY'] = st.secrets["PINECONE_API_KEY"]
 os.environ['HUGGINGFACE_API_KEY'] = st.secrets["HUGGINGFACE_API_KEY"]
-
 
 # Fixed PDF file (you can change the path to your fixed PDF)
 PDF_PATH = "gpmc.pdf"  # Example: local file or URL
@@ -63,12 +63,12 @@ def get_vectorstore(text_chunks, index_name):
         st.error(f"Error generating embeddings: {e}")
         return None
 
-
 def get_conversation_chain(vectorstore):
     """
     Create a conversation chain to handle the retrieval of relevant information from the vectorstore.
     """
-    llm = ChatOpenAI()
+    llm = HuggingFaceHub(repo_id="google/flan-t5-xxl", model_kwargs={"temperature": 0.5, "max_length": 512})
+
     memory = ConversationBufferMemory(memory_key='chat_history', return_messages=True)
     conversation_chain = ConversationalRetrievalChain.from_llm(
         llm=llm,
@@ -97,8 +97,6 @@ def handle_userinput(user_question):
         else:
             # Bot's response
             st.write(f"<p style='color:green;'>Bot: {message.content}</p>", unsafe_allow_html=True)
-            
-
 
 def main():
     st.set_page_config(page_title="Chat with PDF", page_icon=":book:")
