@@ -2,6 +2,7 @@ import streamlit as st
 from PyPDF2 import PdfReader
 from langchain.text_splitter import CharacterTextSplitter
 from langchain.embeddings.huggingface import HuggingFaceEmbeddings
+from sentence_transformers import SentenceTransformer
 from langchain.vectorstores import Pinecone
 from langchain.chat_models import HuggingFaceHub
 from langchain.memory import ConversationBufferMemory
