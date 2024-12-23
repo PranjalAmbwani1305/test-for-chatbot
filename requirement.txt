@@ -1,0 +1,7 @@
+streamlit
+python-dotenv
+PyPDF2
+langchain
+huggingface-hub
+pinecone-client
+requests
