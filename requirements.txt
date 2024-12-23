@@ -1,6 +1,8 @@
-streamlit
-PyPDF2
 langchain
+langchain-huggingface
+langchain-community
 pinecone-client
-huggingface_hub
+huggingface-hub
+python-dotenv
+PyMuPDF
 
