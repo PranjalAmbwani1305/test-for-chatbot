@@ -8,6 +8,7 @@ from langchain.memory import ConversationBufferMemory
 from langchain.chains import ConversationalRetrievalChain
 import pinecone
 import os
+import io
 
 os.environ['PINECONE_API_KEY'] = st.secrets["PINECONE_API_KEY"]
 os.environ['HUGGINGFACE_API_KEY'] = st.secrets["HUGGINGFACE_API_KEY"]
