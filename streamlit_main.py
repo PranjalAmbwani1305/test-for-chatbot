@@ -55,10 +55,11 @@ def get_vectorstore(text_chunks, index_name):
     try:
         embeddings = HuggingFaceEmbeddings(model_name="hkunlp/instructor-xl")
         vectorstore = Pinecone.from_texts(
-            texts=text_chunks, 
-            embedding=embeddings, 
-            index_name=index_name
-        )
+    texts=text_chunks, 
+    embedding=embeddings, 
+    index_name="textembedding"
+)
+
         st.write("Embeddings generated successfully.")
         return vectorstore
     except Exception as e:
