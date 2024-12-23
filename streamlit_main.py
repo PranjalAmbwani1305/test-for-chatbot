@@ -53,7 +53,7 @@ def get_text_chunks(text):
 def get_vectorstore(text_chunks, index_name):
     st.write("Generating embeddings...")
     try:
-        embeddings = HuggingFaceInstructEmbeddings(model_name="hkunlp/instructor-xl")
+        embeddings = HuggingFaceEmbeddings(model_name="hkunlp/instructor-xl")
         vectorstore = Pinecone.from_texts(
             texts=text_chunks, 
             embedding=embeddings, 
