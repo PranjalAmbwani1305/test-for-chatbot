@@ -1,7 +1,7 @@
 import os
 import streamlit as st
 from langchain_core.prompts import PromptTemplate
-from langchain_community.document_loaders import PyMuPDFLoader  
+from langchain.document_loaders import PyMuPDFLoader 
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_huggingface import HuggingFaceEndpoint
 from langchain_community.vectorstores import Pinecone  
