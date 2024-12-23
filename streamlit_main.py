@@ -43,7 +43,7 @@ def get_vectorstore(text_chunks, index_name):
     """
     Create vector embeddings for the PDF chunks and store them in Pinecone.
     """
-    embeddings = HuggingFaceInstructEmbeddings(model_name="hkunlp/instructor-xl")
+    embeddings = HuggingFaceInstructEmbeddings(model_name="meta-llama/Llama-3.3-70B-Instruct")
     vectorstore = Pinecone.from_texts(
         texts=text_chunks, 
         embedding=embeddings, 
