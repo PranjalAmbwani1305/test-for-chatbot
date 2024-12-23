@@ -7,6 +7,7 @@ from langchain.chat_models import HuggingFaceHub
 from langchain.memory import ConversationBufferMemory
 from langchain.chains import ConversationalRetrievalChain
 from langchain.embeddings import HuggingFaceEmbeddings
+from transformers import AutoTokenizer, AutoModel
 
 import pinecone
 import os
