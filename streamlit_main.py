@@ -13,7 +13,7 @@ from huggingface_hub import login
 load_dotenv()
 
 # Log in to Hugging Face using the secret key
-login(token=st.secrets["general"]["HUGGINGFACE_API_KEY"])
+login(token=st.secrets["HUGGINGFACE_API_KEY"])
 
 class Chatbot:
     def __init__(self):
@@ -33,7 +33,7 @@ class Chatbot:
         self.index_name = "amcgpmc"
 
         # Initialize Pinecone client using the secret key
-        self.pc = PineconeClient(api_key=st.secrets["general"]["PINECONE_API_KEY"]) 
+        self.pc = PineconeClient(api_key=st.secrets["PINECONE_API_KEY"]) 
         # Create Pinecone index if it doesn't exist
         if self.index_name not in self.pc.list_indexes().names():
             self.pc.create_index(
@@ -52,7 +52,7 @@ class Chatbot:
             repo_id=repo_id, 
             temperature=0.8, 
             top_k=50, 
-            huggingfacehub_api_token=st.secrets["general"]["HUGGINGFACE_API_KEY"]
+            huggingfacehub_api_token=st.secrets["HUGGINGFACE_API_KEY"]
         )
 
         # Define prompt template
