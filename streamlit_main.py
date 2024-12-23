@@ -17,14 +17,22 @@ os.environ['HUGGINGFACE_API_KEY'] = st.secrets["HUGGINGFACE_API_KEY"]
 PDF_PATH = "gpmc.pdf"  # Example: local file or URL
 
 def get_pdf_text(pdf):
-    """
-    Extract text from the PDF.
-    """
-    pdf_reader = PdfReader(pdf)
-    text = ""
-    for page in pdf_reader.pages:
-        text += page.extract_text()
-    return text
+    st.write("Starting PDF processing...")
+    try:
+        if isinstance(pdf, io.BytesIO):
+            pdf_reader = PdfReader(pdf)
+        else:
+            with open(pdf, "rb") as file:
+                pdf_reader = PdfReader(file)
+
+        text = ""
+        for page in pdf_reader.pages:
+            text += page.extract_text()
+        st.write("PDF processing completed.")
+        return text
+    except Exception as e:
+        st.error(f"Error processing PDF: {e}")
+        return ""
 
 def get_text_chunks(text):
     """
@@ -85,12 +93,6 @@ def handle_userinput(user_question):
             # Bot's response
             st.write(f"<p style='color:green;'>Bot: {message.content}</p>", unsafe_allow_html=True)
             
-with st.spinner("Processing your PDF..."):
-    try:
-        raw_text = get_pdf_text(pdf_doc)
-        st.success("PDF processed successfully!")
-    except Exception as e:
-        st.error(f"An error occurred: {e}")
 
 
 def main():
