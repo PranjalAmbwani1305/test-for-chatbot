@@ -13,7 +13,7 @@ import os
 os.environ['PINECONE_API_KEY'] = st.secrets["PINECONE_API_KEY"]
 
 # Fixed PDF file (you can change the path to your fixed PDF)
-PDF_PATH = "path/to/your/fixed_pdf.pdf"  # Example: local file or URL
+PDF_PATH = "gpmc.pdf"  # Example: local file or URL
 
 def get_pdf_text(pdf):
     """
