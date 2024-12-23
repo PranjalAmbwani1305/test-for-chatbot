@@ -1,6 +1,6 @@
 streamlit
 python-dotenv==1.0.0
-pymupdf 
+PyMuPDF
 langchain==0.0.195
 pinecone-client==2.2.1
 requests==2.28.2
