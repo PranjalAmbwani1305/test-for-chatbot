@@ -84,6 +84,14 @@ def handle_userinput(user_question):
         else:
             # Bot's response
             st.write(f"<p style='color:green;'>Bot: {message.content}</p>", unsafe_allow_html=True)
+            
+with st.spinner("Processing your PDF..."):
+    try:
+        raw_text = get_pdf_text(pdf_doc)
+        st.success("PDF processed successfully!")
+    except Exception as e:
+        st.error(f"An error occurred: {e}")
+
 
 def main():
     st.set_page_config(page_title="Chat with PDF", page_icon=":book:")
