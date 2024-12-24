@@ -17,13 +17,23 @@ if not PINECONE_API_KEY:
     st.error("Pinecone API key is not set. Please check your .env file.")
     st.stop()
 
+# Initialize Pinecone
+try:
+    pc = Pinecone(api_key=PINECONE_API_KEY)
+    index_name = "pdf-chatbot-index"
 
-index_name = "pdf-chatbot-index"
+    # List existing indexes
+    existing_indexes = pc.list_indexes()
+    st.write("Existing indexes:", existing_indexes)
 
-# Create or reset the Pinecone index
-if index_name in pc.list_indexes():
-    pc.delete_index(index_name)
-pc.create_index(name=index_name, dimension=768, metric="cosine")
+    # Create or reset the Pinecone index
+    if index_name in existing_indexes:
+        pc.delete_index(index_name)
+    pc.create_index(name=index_name, dimension=768, metric="cosine")
+
+except Exception as e:
+    st.error(f"Error initializing Pinecone: {e}")
+    st.stop()
 
 # Load PDF document
 try:
