@@ -21,7 +21,7 @@ HUGGINGFACE_REPO_ID = os.getenv("HUGGINGFACE_REPO_ID")
 login(HUGGINGFACE_API_TOKEN)
 
 try:
-    pc = Pinecone(api_key=PINECONE_API_KEY)
+    pc = Pinecone(api_key=PINECONE_API_KEY, environment=PINECONE_ENV)
 except Exception as e:
     st.error(f"Error initializing Pinecone: {e}")
     st.stop()
@@ -33,8 +33,9 @@ except Exception as e:
     st.stop()
 
 try:
-    index_exists = PINECONE_INDEX_NAME in pc.list_indexes().names()
+    index_exists = PINECONE_INDEX_NAME in pc.list_indexes()
     if index_exists:
+        index = pc.index(PINECONE_INDEX_NAME)
         doc_store = LangchainPinecone.from_existing_index(index_name=PINECONE_INDEX_NAME, embedding=embeddings)
     else:
         pc.create_index(
@@ -44,6 +45,7 @@ try:
             spec=ServerlessSpec(cloud='aws', region='us-west-2')
         )
         st.success(f"Index '{PINECONE_INDEX_NAME}' created successfully!")
+        index = pc.index(PINECONE_INDEX_NAME)
         doc_store = LangchainPinecone.from_existing_index(index_name=PINECONE_INDEX_NAME, embedding=embeddings)
         st.info("Document store initialized after index creation.")
 except Exception as e:
@@ -79,7 +81,7 @@ if doc_store is not None:
             vectors = [(ids[j], embeds[j], metadata[j]) for j in range(len(batch))]
             
             try:
-                doc_store.upsert(vectors=vectors)
+                index.upsert(vectors=vectors)
             except Exception as e:
                 st.error(f"Error during upsert: {e}")
                 st.stop()
