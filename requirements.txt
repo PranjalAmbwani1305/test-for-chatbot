@@ -1,9 +1,8 @@
 streamlit
-transformers
-sentencepiece
-langchain
-langchain_community
 pinecone-client
-pinecone
-sentence-transformers
+langchain
+langchain-community
 PyMuPDF
+torch
+transformers
+sentence-transformers
