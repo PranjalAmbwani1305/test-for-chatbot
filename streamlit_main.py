@@ -2,9 +2,9 @@ import os
 from dotenv import load_dotenv
 import streamlit as st
 from PyPDF2 import PdfReader
-from pinecone import Pinecone, ServerlessSpec
+from pinecone import Pinecone as PineconeClient, ServerlessSpec
 from langchain_community.embeddings import HuggingFaceEmbeddings
-from langchain.vectorstores import Pinecone as LangchainPinecone
+from langchain.vectorstores import Pinecone as PineconeClient, ServerlessSpec
 from langchain.chains import RetrievalQA
 from langchain.llms import HuggingFaceHub
 from langchain.prompts import PromptTemplate
