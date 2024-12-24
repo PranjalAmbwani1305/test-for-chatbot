@@ -10,27 +10,26 @@ from langchain.llms import HuggingFaceHub
 from langchain.prompts import PromptTemplate
 from huggingface_hub import login
 
-# Load environment var
+# Load environment variables
 load_dotenv()
 
-# Serect
 PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
 PINECONE_ENV = os.getenv("PINECONE_ENV")
 PINECONE_INDEX_NAME = os.getenv("PINECONE_INDEX_NAME")
 HUGGINGFACE_API_TOKEN = os.getenv("HUGGINGFACE_API_TOKEN")
 HUGGINGFACE_REPO_ID = os.getenv("HUGGINGFACE_REPO_ID")
 
-#  Hugging Face
+# Login to HuggingFace
 login(HUGGINGFACE_API_TOKEN)
 
-#  Pinecone client
+# Initialize Pinecone client
 try:
     pc = PineconeClient(api_key=PINECONE_API_KEY)
 except Exception as e:
     st.error(f"Error initializing Pinecone: {e}")
     st.stop()
 
-# index
+# Check if the index exists before creating it
 try:
     if PINECONE_INDEX_NAME not in pc.list_indexes():
         # Adjust dimension based on your embeddings model
@@ -45,21 +44,24 @@ try:
     else:
         st.success(f"Index '{PINECONE_INDEX_NAME}' already exists.")
 except PineconeApiException as e:
-    st.error(f"Pinecone API Exception: {e}")
+    if e.status_code == 409:  # Conflict error when the index already exists
+        st.success(f"Index '{PINECONE_INDEX_NAME}' already exists.")
+    else:
+        st.error(f"Pinecone API Exception: {e}")
     st.stop()
 
-#  embeddings
+# Initialize embeddings
 try:
     embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
 except Exception as e:
     st.error(f"Error initializing embeddings: {e}")
     st.stop()
 
-# chatbot 
+# Set up the chatbot interface
 st.title("Chatbot")
 pdf_path = "gpmc.pdf"
 
-# Load and read the PDF doc
+# Load and read the PDF document
 try:
     pdf_reader = PdfReader(pdf_path)
     pdf_text = ""
@@ -72,19 +74,12 @@ except Exception as e:
     st.error(f"Error reading PDF: {e}")
     st.stop()
 
-# chunk the text
+# Chunk the text into smaller parts for embedding
 chunk_size = 500
 text_chunks = [pdf_text[i:i + chunk_size] for i in range(0, len(pdf_text), chunk_size)]
 
-# t0 document store
-try:
-    doc_store = LangchainPinecone.from_existing_index(index_name=PINECONE_INDEX_NAME, embedding=embeddings)
-except Exception as e:
-    st.error(f"Error initializing document store: {e}")
-    st.stop()
-
-#  document into Pinecone
-if doc_store is not None:
+# Index the document text into Pinecone
+if pc.index(PINECONE_INDEX_NAME) is not None:
     with st.spinner("Indexing document..."):
         batch_size = 32
         for i in range(0, len(text_chunks), batch_size):
@@ -94,7 +89,7 @@ if doc_store is not None:
             embeds = embeddings.embed_documents(batch)
             metadata = [{"text": text} for text in batch]
             vectors = [(ids[j], embeds[j], metadata[j]) for j in range(len(batch))]
-
+            
             try:
                 pc.index(PINECONE_INDEX_NAME).upsert(vectors=vectors)
             except Exception as e:
@@ -102,7 +97,7 @@ if doc_store is not None:
                 st.stop()
         st.success("Document indexed successfully!")
 
-    # question-answering system
+    # Set up the question-answering system
     template = """Use the following pieces of context to answer the question at the end. If you don't know the answer, just say that you don't know, don't try to make up an answer.
 
     {context}
@@ -111,10 +106,11 @@ if doc_store is not None:
     Helpful Answer:"""
     QA_PROMPT = PromptTemplate(template=template, input_variables=["context", "question"])
 
-    #model for QA
+    # Initialize the language model for QA
     llm = HuggingFaceHub(repo_id=HUGGINGFACE_REPO_ID, model_kwargs={"temperature": 0.5, "max_length": 1024}, huggingfacehub_api_token=HUGGINGFACE_API_TOKEN)
 
     # Set up the QA chain with the retriever from Pinecone
+    doc_store = LangchainPinecone.from_existing_index(index_name=PINECONE_INDEX_NAME, embedding=embeddings)
     qa = RetrievalQA.from_chain_type(llm=llm, chain_type="stuff", retriever=doc_store.as_retriever(), return_source_documents=True, chain_type_kwargs={"prompt": QA_PROMPT})
 
     # Get user input for the query
