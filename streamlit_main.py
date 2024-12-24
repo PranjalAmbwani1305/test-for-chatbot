@@ -73,10 +73,9 @@ if doc_store is not None:
     Question: {question}
     Helpful Answer:"""
     QA_PROMPT = PromptTemplate(template=template, input_variables=["context", "question"])
-
     
-llm_repo_id = "google/flan-t5-xl" 
-llm = HuggingFaceHub(repo_id=llm_repo_id, model_kwargs={"temperature":0.5, "max_length":512}, huggingfacehub_api_token=HUGGINGFACE_API_TOKEN)
+    llm_repo_id = "google/flan-t5-xl" 
+    llm = HuggingFaceHub(repo_id=llm_repo_id, model_kwargs={"temperature":0.5, "max_length":512}, huggingfacehub_api_token=HUGGINGFACE_API_TOKEN)
 
     qa = RetrievalQA.from_chain_type(llm=llm, chain_type="stuff", retriever=doc_store.as_retriever(), return_source_documents=True, chain_type_kwargs={"prompt": QA_PROMPT})
 
