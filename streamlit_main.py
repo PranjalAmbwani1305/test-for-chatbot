@@ -1,3 +1,4 @@
+import pinecone
 import os
 import streamlit as st
 from dotenv import load_dotenv
@@ -8,115 +9,90 @@ from langchain.vectorstores import Pinecone
 from langchain.memory import ConversationBufferMemory
 from langchain.chains import ConversationalRetrievalChain
 from langchain.llms import HuggingFaceHub
-import pinecone
-from langchain.embeddings import HuggingFaceEmbeddings
 
-# Load environment variables from .env
 load_dotenv()
 
-# Access the API keys from Streamlit secrets
-os.environ['HUGGINGFACE_API_KEY'] = st.secrets["HUGGINGFACE_API_KEY"]
-os.environ['PINECONE_API_KEY'] = st.secrets["PINECONE_API_KEY"]
+# Initialize the Pinecone environment
+pinecone.init(api_key=os.getenv("PINECONE_API_KEY"), environment="us-east1-gcp")
 
-# Function to extract text from PDFs
-def get_pdf_text(pdf_paths):
+def extract_text_from_pdfs(pdf_paths):
     text = ""
-    for pdf in pdf_paths:
-        pdf_reader = PdfReader(pdf)
-        for page in pdf_reader.pages:
-            text += page.extract_text()
+    for pdf_path in pdf_paths:
+        with open(pdf_path, 'rb') as pdf_file:
+            pdf_reader = PdfReader(pdf_file)
+            for page in pdf_reader.pages:
+                text += page.extract_text()
     return text
 
-# Function to split the extracted text into chunks
-def get_text_chunks(text):
-    text_splitter = CharacterTextSplitter(
-        separator="\n",
-        chunk_size=1000,
-        chunk_overlap=200,
-        length_function=len
-    )
-    chunks = text_splitter.split_text(text)
-    return chunks
+def split_text_into_chunks(text, chunk_size=1000, overlap=200):
+    splitter = CharacterTextSplitter(separator="\n", chunk_size=chunk_size, chunk_overlap=overlap)
+    return splitter.split_text(text)
 
-# Function to create a Pinecone vector store using Hugging Face embeddings
-def get_vectorstore(text_chunks):
-    mbeddings_model = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
-    
-    # Create Pinecone index for storing vectors
+def generate_embeddings_for_chunks(text_chunks):
+    embeddings_model = HuggingFaceInstructEmbeddings(model_name="hkunlp/instructor-xl")
+    return [embeddings_model.embed(chunk) for chunk in text_chunks]
+
+def initialize_pinecone_vector_store(text_chunks, embeddings):
     index_name = "chatbot"
     
-    # If the index does not exist, create it
-    if index_name not in pinecone.list_indexes():
-        pinecone.create_index(index_name, dimension=embeddings.embedding_size)
-    
-    # Get the vector store (Pinecone index)
-    index = pinecone.Index(index_name)
-    
-    # Insert vectors into the Pinecone index
-    vectors = [embeddings.embed(text) for text in text_chunks]
-    ids = [str(i) for i in range(len(text_chunks))]
-    
-    # Upsert the vectors into Pinecone
-    index.upsert(vectors=zip(ids, vectors))
-    
-    # Create the vector store using the Pinecone index
-    vectorstore = Pinecone(index=index, embedding_function=embeddings.embed)
-    return vectorstore
+    # Check if the Pinecone index exists, and create it if not
+    try:
+        # Using the updated Pinecone client API
+        if index_name not in pinecone.list_indexes():
+            pinecone.create_index(index_name, dimension=embeddings[0].shape[0])
+    except AttributeError as e:
+        st.error(f"Error while interacting with Pinecone: {e}")
+        return None
 
-# Function to create a conversational chain using Hugging Face
-def get_conversation_chain(vectorstore):
+    pinecone_index = pinecone.Index(index_name)
+    ids = [str(i) for i in range(len(text_chunks))]
+    pinecone_index.upsert(vectors=zip(ids, embeddings))
+
+    return Pinecone(index=pinecone_index, embedding_function=embeddings)
+
+def create_conversational_chain(vectorstore):
     llm = HuggingFaceHub(repo_id="google/flan-t5-xxl", model_kwargs={"temperature": 0.5, "max_length": 512})
     memory = ConversationBufferMemory(memory_key='chat_history', return_messages=True)
-    conversation_chain = ConversationalRetrievalChain.from_llm(
+    return ConversationalRetrievalChain.from_llm(
         llm=llm,
         retriever=vectorstore.as_retriever(),
         memory=memory
     )
-    return conversation_chain
 
-# Function to handle user input and display conversation history
-def handle_userinput(user_question):
+def handle_conversation(user_question):
     response = st.session_state.conversation({'question': user_question})
     st.session_state.chat_history = response['chat_history']
 
-    # Display chat history
     for i, message in enumerate(st.session_state.chat_history):
         if i % 2 == 0:
             st.write(f"**User**: {message.content}")
         else:
             st.write(f"**Bot**: {message.content}")
 
-# Main function to set up the Streamlit app
 def main():
-    st.set_page_config(page_title="Chat with Multiple PDFs", page_icon=":books:")
-    
-    # Initialize session states for conversation and chat history
+    st.set_page_config(page_title="Chat with PDFs", page_icon=":books:")
+
     if "conversation" not in st.session_state:
         st.session_state.conversation = None
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = []
 
-    st.title("Chatbot with PDF Integration")
+    st.title("Chatbot with PDF Document Integration")
     user_question = st.text_input("Ask a question about the document:")
 
-    # Process the predefined PDFs and set up conversation chain
-    pdf_paths = ["gpmc.pdf"]  # Path to the pre-loaded PDF(s)
+    pdf_paths = ["gpmc.pdf"]
 
-    with st.spinner("Processing pre-loaded PDFs..."):
-        raw_text = get_pdf_text(pdf_paths)  # Extract text from PDFs
-
-        # Split the extracted text into chunks
-        text_chunks = get_text_chunks(raw_text)
-
-        # Create the vector store based on the text chunks
-        vectorstore = get_vectorstore(text_chunks)
-
-        # Create the conversational chain and store it in session state
+    with st.spinner("Processing PDFs and initializing the conversation..."):
+        raw_text = extract_text_from_pdfs(pdf_paths)
+        text_chunks = split_text_into_chunks(raw_text)
+        embeddings = generate_embeddings_for_chunks(text_chunks)
+        vectorstore = initialize_pinecone_vector_store(text_chunks, embeddings)
         if st.session_state.conversation is None:
-            st.session_state.conversation = get_conversation_chain(vectorstore)
+            st.session_state.conversation = create_conversational_chain(vectorstore)
 
     if user_question:
-        handle_userinput(user_question)
+        handle_conversation(user_question)
 
 if __name__ == '__main__':
     main()
+
