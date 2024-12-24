@@ -1,58 +1,45 @@
 import os
-import streamlit as st
-from langchain_core.prompts import PromptTemplate
-from langchain.document_loaders import PyMuPDFLoader 
-from langchain_huggingface import HuggingFaceEmbeddings
-from langchain_huggingface import HuggingFaceEndpoint
-from langchain_community.vectorstores import Pinecone  
-from pinecone import Pinecone as PineconeClient, ServerlessSpec  
 from dotenv import load_dotenv
-from huggingface_hub import login
+import streamlit as st
+from PyPDF2 import PdfReader
+from transformers import AutoTokenizer, AutoModel
+import pinecone
+from langchain.embeddings.huggingface import HuggingFaceEmbeddings
+from langchain.vectorstores import Pinecone
+from langchain.chains import RetrievalQA
+from langchain.llms import HuggingFaceHub
 
-# Load environment variables
 load_dotenv()
 
-# Log in to Hugging Face using the secret key
-login(token=st.secrets["HUGGINGFACE_API_KEY"])
+PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
+PINECONE_ENV = os.getenv("PINECONE_ENV")
+HUGGINGFACE_API_TOKEN = os.getenv("HUGGINGFACE_API_TOKEN")
 
-class Chatbot:
-    def __init__(self):
-        # Check if the PDF file exists
-        if not os.path.exists('gpmc.pdf'):
-            st.error("The PDF file 'gpmc.pdf' was not found.")
-            st.stop()
+pinecone.init(api_key=PINECONE_API_KEY, environment=PINECONE_ENV)
+index_name = "pdf-query-chatbot"
+if index_name not in pinecone.list_indexes():
+    pinecone.create_index(index_name, dimension=768)
 
-        # Load PDF data
-        loader = PyMuPDFLoader('gpmc.pdf') 
-        documents = loader.load()
-        
-        # Initialize embeddings
-        self.embeddings = HuggingFaceEmbeddings()
+model_name = "sentence-transformers/all-MiniLM-L6-v2"
+embeddings = HuggingFaceEmbeddings(model_name=model_name)
 
-        # Define the index name
-        self.index_name = "amcgpmc"
+doc_store = Pinecone(index_name, embeddings.embed_query, "text")
 
-        # Initialize Pinecone client using the secret key
-        self.pc = PineconeClient(api_key=st.secrets["PINECONE_API_KEY"]) 
-        # Create Pinecone index if it doesn't exist
-        if self.index_name not in self.pc.list_indexes().names():
-            self.pc.create_index(
-                name=self.index_name,
-                dimension=768,  
-                metric='cosine',
-                spec=ServerlessSpec(
-                    cloud='aws', 
-                    region='us-east-1'  
-                )
-            )
+st.title("PDF Query Chatbot")
+st.sidebar.header("Upload PDF")
 
-        # Set up Hugging Face model
-        repo_id = "mistralai/Mixtral-8x7B-Instruct-v0.1"
-        self.llm = HuggingFaceEndpoint(
-            repo_id=repo_id, 
-            temperature=0.8, 
-            top_k=50, 
-            huggingfacehub_api_token=st.secrets["HUGGINGFACE_API_KEY"]
-        )
+uploaded_file = st.sidebar.file_uploader("Upload your PDF file", type=["pdf"])
+if uploaded_file:
+    pdf_reader = PdfReader(uploaded_file)
+    pdf_text = ""
+    for page in pdf_reader.pages:
+        pdf_text += page.extract_text()
 
-        # Define prompt template
+    chunk_size = 500
+    text_chunks = [pdf_text[i : i + chunk_size] for i in range(0, len(pdf_text), chunk_size)]
+
+    with st.spinner("Indexing document..."):
+        for chunk in text_chunks:
+            doc_store.add_texts([chunk])
+
+    st.success("Document indexed successfully!")
