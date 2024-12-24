@@ -15,16 +15,6 @@ from langchain.llms import HuggingFaceHub
 load_dotenv()
 
 
-def extract_text_from_pdfs(pdf_files):
-    """
-    Extract text from uploaded PDF files.
-    """
-    text = ""
-    for pdf_file in pdf_files:
-        pdf_reader = PdfReader(pdf_file)
-        for page in pdf_reader.pages:
-            text += page.extract_text()
-    return text
 
 def split_text_into_chunks(text, chunk_size=1000, overlap=200):
     """
