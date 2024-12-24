@@ -5,10 +5,10 @@ from langchain.vectorstores import Pinecone
 from langchain.chains import RetrievalQA
 from langchain.chat_models import ChatOpenAI
 import pinecone
+import os
 
-HUGGINGFACE_API_KEY = st.secrets["HUGGINGFACE_API_KEY"]
-PINECONE_API_KEY = st.secrets["PINECONE_API_KEY"]
-PINECONE_ENV = st.secrets["PINECONE_ENV"]
+os.environ['HUGGINGFACE_API_KEY'] = st.secrets["HUGGINGFACE_API_KEY"]
+os.environ['PINECONE_API_KEY'] = st.secrets["PINECONE_API_KEY"]
 
 pinecone.init(api_key=PINECONE_API_KEY, environment=PINECONE_ENV)
 
