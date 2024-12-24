@@ -20,14 +20,28 @@ load_dotenv()
 pinecone_api_key = os.getenv("PINECONE_API_KEY")
 pinecone_env = os.getenv("PINECONE_ENV")
 
+# Initialize Pinecone connection (v2.x.x)
+pinecone.init(
+    api_key=pinecone_api_key,
+    environment=pinecone_env,
+)
 
-# Create or connect to an existing Pinecone index
-index_name = "fashion-documents"  # You can choose a custom name for your index
-if index_name not in pinecone.list_indexes():
+# Set your index name
+index_name = "chatbot"  # You can choose a custom name for your index
+
+# Check if index exists by using the Index class
+# In Pinecone v2, we use the Index constructor to check if the index exists
+try:
+    # Try to initialize the index
+    index = pinecone.Index(index_name)
+    print(f"Index '{index_name}' found.")
+except pinecone.exceptions.NotFoundException:
+    # Index does not exist, so create a new one
+    print(f"Index '{index_name}' not found. Creating a new index...")
     pinecone.create_index(index_name, dimension=768)  # Set embedding dimension (768 for "all-MiniLM-L6-v2")
-index = pinecone.Index(index_name)
+    index = pinecone.Index(index_name)
 
-# Load the Hugging Face model for QA
+# Initialize the Hugging Face Hub LLM
 hf_hub_llm = HuggingFaceHub(
     repo_id="meta-llama/Meta-Llama-3-8B-Instruct",
     model_kwargs={"temperature": 1, "max_new_tokens": 1024},
