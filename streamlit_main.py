@@ -4,7 +4,6 @@ from langchain.prompts import PromptTemplate
 from langchain.document_loaders import PyMuPDFLoader
 from langchain.embeddings import HuggingFaceEmbeddings
 from langchain.vectorstores import Pinecone
-from langchain.schema import RunnablePassthrough
 from langchain.schema.output_parser import StrOutputParser
 from pinecone import Pinecone as PineconeClient, ServerlessSpec  
 from dotenv import load_dotenv
