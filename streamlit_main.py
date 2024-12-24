@@ -9,9 +9,14 @@ from langchain.memory import ConversationBufferMemory
 from langchain.chains import ConversationalRetrievalChain
 from langchain.llms import HuggingFaceHub
 import time
+import logging
 
 # Load environment variables
 load_dotenv()
+
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 def generate_embeddings_for_chunks(text_chunks):
     """
@@ -19,7 +24,7 @@ def generate_embeddings_for_chunks(text_chunks):
     """
     embeddings_model = HuggingFaceInstructEmbeddings(model_name="hkunlp/instructor-xl")
     embeddings = [embeddings_model.embed(chunk) for chunk in text_chunks]
-    print(f"Generated {len(embeddings)} embeddings.")  # Debug print
+    logger.info(f"Generated {len(embeddings)} embeddings.")  # Log the number of embeddings
     return embeddings
 
 def initialize_pinecone_vector_store(text_chunks, embeddings):
@@ -41,10 +46,11 @@ def initialize_pinecone_vector_store(text_chunks, embeddings):
         ids = [str(i) for i in range(len(text_chunks))]
         pinecone_index.upsert(vectors=zip(ids, embeddings))
 
-        print(f"Uploaded {len(ids)} embeddings to Pinecone.")  # Debug print
+        logger.info(f"Uploaded {len(ids)} embeddings to Pinecone.")  # Log the success
         return Pinecone(index=pinecone_index, embedding_function=generate_embeddings_for_chunks)
     except Exception as e:
         st.error(f"Error initializing Pinecone vector store: {e}")
+        logger.error(f"Error initializing Pinecone vector store: {e}")  # Log the error
         return None
 
 def create_conversational_chain(vectorstore):
@@ -53,7 +59,7 @@ def create_conversational_chain(vectorstore):
     """
     llm = HuggingFaceHub(repo_id="google/flan-t5-xxl", model_kwargs={"temperature": 0.5, "max_length": 512})
     memory = ConversationBufferMemory(memory_key='chat_history', return_messages=True)
-    print("Creating conversation chain...")  # Debug print
+    logger.info("Creating conversation chain...")  # Log chain creation
     return ConversationalRetrievalChain.from_llm(
         llm=llm,
         retriever=vectorstore.as_retriever(),
@@ -79,6 +85,7 @@ def handle_conversation(user_question):
                     st.write(f"**Bot**: {message.content}")
         except Exception as e:
             st.error(f"An error occurred during conversation handling: {e}")
+            logger.error(f"An error occurred during conversation handling: {e}")  # Log the error
     else:
         st.warning("The conversation has not been initialized yet. Please ensure the PDF is processed correctly.")
 
@@ -90,11 +97,31 @@ def extract_text_from_pdf(pdf_file_path):
         loader = PyMuPDFLoader(pdf_file_path)
         documents = loader.load()
         text = "\n".join([doc.page_content for doc in documents])  # Assuming loader returns documents with `page_content`
-        print(f"Extracted {len(text)} characters from the PDF.")  # Debug print
+        logger.info(f"Extracted {len(text)} characters from the PDF.")  # Log extraction length
         return text
     except Exception as e:
         st.error(f"Failed to extract text from PDF: {e}")
+        logger.error(f"Failed to extract text from PDF: {e}")  # Log the error
         return ""
+
+def split_text_into_chunks(text, chunk_size=512):
+    """
+    Split the extracted text into chunks of a specified size.
+    """
+    words = text.split()
+    chunks = []
+    current_chunk = []
+    
+    for word in words:
+        current_chunk.append(word)
+        if len(" ".join(current_chunk)) > chunk_size:
+            chunks.append(" ".join(current_chunk))
+            current_chunk = []
+    if current_chunk:
+        chunks.append(" ".join(current_chunk))
+    
+    logger.info(f"Split text into {len(chunks)} chunks.")  # Log the number of chunks
+    return chunks
 
 def main():
     """
@@ -119,9 +146,8 @@ def main():
                 raw_text = extract_text_from_pdf(pdf_file_path)
                 if raw_text:
                     st.success(f"Successfully extracted {len(raw_text)} characters from the PDF.")
-                    # Split the extracted text into chunks based on newlines or other criteria
-                    text_chunks = raw_text.split("\n")  # Or split differently as per your needs
-                    print(f"Split text into {len(text_chunks)} chunks.")  # Debug print
+                    # Split the extracted text into chunks based on specified size
+                    text_chunks = split_text_into_chunks(raw_text)  # Split the text into chunks
                     # Generate embeddings for the text chunks
                     embeddings = generate_embeddings_for_chunks(text_chunks)
                     # Initialize Pinecone vector store and upload embeddings
@@ -140,6 +166,7 @@ def main():
                     st.error("No text extracted from the PDF.")
             except Exception as e:
                 st.error(f"An error occurred during processing: {e}")
+                logger.error(f"An error occurred during processing: {e}")  # Log the error
 
     if user_question:
         handle_conversation(user_question)
