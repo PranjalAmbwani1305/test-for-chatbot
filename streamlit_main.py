@@ -14,21 +14,6 @@ from langchain.llms import HuggingFaceHub
 # Load environment variables
 load_dotenv()
 
-def self:
-self.pc = PineconeClient(api_key=os.getenv('PINECONE_API_KEY')) 
-        # Create Pinecone index if it doesn't exist
-        if self.index_name not in self.pc.list_indexes().names():
-            self.pc.create_index(
-                name=self.index_name,
-                dimension=384,  
-                metric='cosine',
-                spec=ServerlessSpec(
-                    cloud='aws', 
-                    region='us-east-1'  
-                )
-            )
-
-
 
 def extract_text_from_pdfs(pdf_files):
     """
