@@ -104,7 +104,7 @@ def main():
     user_question = st.text_input("Ask a question about the document:")
 
     # Specify the local path to the GMP PDF
-    pdf_file_path = "gmpc.pdf"
+    pdf_file_path = "gmp.pdf"  # Use the correct path to the gmp.pdf file here
 
     if os.path.exists(pdf_file_path):
         with st.spinner("Processing GMP PDF and initializing the conversation..."):
