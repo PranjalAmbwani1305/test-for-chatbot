@@ -1,7 +1,6 @@
 import os
 import streamlit as st
 import pinecone
-import fitz
 from dotenv import load_dotenv
 from langchain_community.document_loaders import PyMuPDFLoader
 from langchain.embeddings import HuggingFaceInstructEmbeddings
@@ -63,16 +62,18 @@ def load_pdf_and_process(file_path):
     """
     Load a PDF file and process it into text chunks.
     """
+    logger.info(f"Loading PDF from {file_path}")
     loader = PyMuPDFLoader(file_path)
     documents = loader.load()
     text_chunks = [doc.page_content for doc in documents]
+    logger.info(f"Loaded {len(text_chunks)} chunks from the PDF.")
     return text_chunks
 
 def main():
-    st.title("Chatbot")
+    st.title("PDF Embedding and Retrieval Chatbot")
 
     # Load the specific PDF file
-    pdf_file_path = "gpmc.pdf"  # Ensure this file is in the same directory as your script
+    pdf_file_path = "gmpc.pdf"  # Ensure this file is in the same directory as your script
 
     if os.path.exists(pdf_file_path):
         # Load and process the PDF
