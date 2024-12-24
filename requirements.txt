@@ -5,4 +5,4 @@ langchain
 langchain_community
 pinecone-client
 pinecone
-PyPDF2
+sentence-transformers
