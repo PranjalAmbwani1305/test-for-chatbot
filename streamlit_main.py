@@ -27,7 +27,7 @@ index_name = "textembedding"
 pc = PineconeClient(api_key=PINECONE_API_KEY)
 
 # Create Pinecone index if it doesn't exist
-if index_name not in pc.list_indexes().names():
+if index_name not in pc.list_indexes():
     pc.create_index(
         name=index_name,
         dimension=384,  # dimension of sentence embeddings
@@ -74,7 +74,7 @@ class Chatbot:
         context = "\n".join([doc.page_content for doc in relevant_docs])  # Use 'page_content' to get the text
         
         # Generate the answer using the Hugging Face model
-        response = llm.invoke({"context": context, "question": question})
+        response = llm(context=context, question=question)  # Correct method here
         return response
 
 # Set up the Streamlit UI
