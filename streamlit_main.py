@@ -3,7 +3,8 @@ from dotenv import load_dotenv
 import streamlit as st
 from PyPDF2 import PdfReader
 import pinecone
-from langchain.embeddings.huggingface import HuggingFaceEmbeddings
+import huggingface
+from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain.vectorstores import Pinecone
 from langchain.chains import RetrievalQA
 from langchain.llms import HuggingFaceHub
@@ -15,7 +16,6 @@ PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
 PINECONE_ENV = os.getenv("PINECONE_ENV")
 PINECONE_INDEX_NAME = os.getenv("PINECONE_INDEX_NAME")
 HUGGINGFACE_API_TOKEN = os.getenv("HUGGINGFACE_API_TOKEN")
-
 
 embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2", api_key=HUGGINGFACE_API_TOKEN)
 
