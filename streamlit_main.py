@@ -2,9 +2,9 @@ import os
 from dotenv import load_dotenv
 import streamlit as st
 from PyPDF2 import PdfReader
-import pinecone
+from pinecone import Pinecone, ServerlessSpec
 from langchain_community.embeddings import HuggingFaceEmbeddings
-from langchain.vectorstores import Pinecone
+from langchain.vectorstores import Pinecone as LangchainPinecone
 from langchain.chains import RetrievalQA
 from langchain.llms import HuggingFaceHub
 from langchain.prompts import PromptTemplate
@@ -17,9 +17,9 @@ PINECONE_INDEX_NAME = os.getenv("PINECONE_INDEX_NAME")
 HUGGINGFACE_API_TOKEN = os.getenv("HUGGINGFACE_API_TOKEN")
 HUGGINGFACE_REPO_ID = os.getenv("HUGGINGFACE_REPO_ID")
 
-# Initialize Pinecone
+# Initialize Pinecone instance
 try:
-    pinecone.init(api_key=PINECONE_API_KEY, environment=PINECONE_ENV)
+    pc = Pinecone(api_key=PINECONE_API_KEY)
 except Exception as e:
     st.error(f"Error initializing Pinecone: {e}")
     st.stop()
@@ -31,21 +31,22 @@ except Exception as e:
     st.error(f"Error initializing embeddings: {e}")
     st.stop()  # Stop execution if embeddings fail
 
+# Check if the index exists or create it
 try:
-    # Check if the index exists before attempting to load it
-    index_exists = PINECONE_INDEX_NAME in pinecone.list_indexes()
+    index_exists = PINECONE_INDEX_NAME in pc.list_indexes().names()
     if index_exists:
-        doc_store = Pinecone.from_existing_index(index_name=PINECONE_INDEX_NAME, embedding=embeddings)
+        doc_store = LangchainPinecone.from_existing_index(index_name=PINECONE_INDEX_NAME, embedding=embeddings)
         st.success("Document store loaded from existing index!")
     else:
         # Create the index if it doesn't exist
         pc.create_index(
             name=PINECONE_INDEX_NAME,
             dimension=embeddings.embed_query("Sample").__len__(),
-            metric="cosine"
+            metric="cosine",
+            spec=ServerlessSpec(cloud='aws', region='us-west-2')  # Modify this as needed
         )
         st.success(f"Index '{PINECONE_INDEX_NAME}' created successfully!")
-        doc_store = Pinecone.from_existing_index(index_name=PINECONE_INDEX_NAME, embedding=embeddings)
+        doc_store = LangchainPinecone.from_existing_index(index_name=PINECONE_INDEX_NAME, embedding=embeddings)
         st.info("Document store initialized after index creation.")
 except Exception as e:
     st.error(f"Failed to load or create index: {e}")
