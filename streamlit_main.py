@@ -1,6 +1,7 @@
 import os
 import streamlit as st
 import pinecone
+import fitz
 from dotenv import load_dotenv
 from langchain_community.document_loaders import PyMuPDFLoader
 from langchain.embeddings import HuggingFaceInstructEmbeddings
