@@ -8,22 +8,22 @@ from langchain.chains import RetrievalQA
 import pinecone
 
 # Load API keys from secrets
-HUGGINGFACE_API_KEY = st.secrets["huggingface_api_key"]
-PINECONE_API_KEY = st.secrets["pinecone_api_key"]
-PINECONE_ENV = st.secrets["pinecone_env"]
+HUGGINGFACE_API_KEY = st.secrets["HUGGINGFACE_API_KEY"]
+PINECONE_API_KEY = st.secrets["PINECONE_API_KEY"]
+PINECONE_ENV = st.secrets["PINECONE_ENV"]
 
 # Initialize Pinecone
 pinecone.init(api_key=PINECONE_API_KEY, environment=PINECONE_ENV)
 
 # Load PDF
-pdf_loader = PyPDFLoader("path_to_your_pdf.pdf")
+pdf_loader = PyPDFLoader("gpmc.pdf")
 documents = pdf_loader.load()
 
 # Create embeddings
-embeddings = HuggingFaceEmbeddings(model_name="your_huggingface_model", api_key=HUGGINGFACE_API_KEY)
+embeddings = HuggingFaceEmbeddings(model_name="dyumat/mistral-7b-chat-pdf", api_key=HUGGINGFACE_API_KEY)
 
 # Create Pinecone index
-index_name = "your_index_name"
+index_name = "chatbot"
 if index_name not in pinecone.list_indexes():
     pinecone.create_index(index_name, dimension=embeddings.embed_dimension)
 
