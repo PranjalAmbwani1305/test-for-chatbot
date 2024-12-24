@@ -4,7 +4,7 @@ sentence-transformers
 transformers
 streamlit
 PyPDF2
-dotenv
+python_dotenv
 huggingface_hub
 pymupdf
 langchain-community
