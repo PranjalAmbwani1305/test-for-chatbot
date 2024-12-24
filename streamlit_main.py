@@ -7,11 +7,7 @@ from langchain.vectorstores import Pinecone
 from langchain.schema.output_parser import StrOutputParser
 from pinecone import Pinecone as PineconeClient, ServerlessSpec  
 from dotenv import load_dotenv
-from huggingface_hub import login, HfApi
 from langchain.text_splitter import CharacterTextSplitter
-
-# Log in to Hugging Face
-login(token='YOUR_HUGGINGFACE_TOKEN')
 
 # Load environment variables
 load_dotenv()
