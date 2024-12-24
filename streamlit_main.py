@@ -17,14 +17,16 @@ PINECONE_INDEX_NAME = os.getenv("PINECONE_INDEX_NAME")
 HUGGINGFACE_API_TOKEN = os.getenv("HUGGINGFACE_API_TOKEN")
 
 pinecone.init(api_key=PINECONE_API_KEY, environment=PINECONE_ENV)
+
+
 embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2", api_key=HUGGINGFACE_API_TOKEN)
 
 try:
-    # Correct way to instantiate from existing index
     doc_store = Pinecone.from_existing_index(index_name=PINECONE_INDEX_NAME, embedding=embeddings)
-    st.success("Document store loaded from existing index!")
+    print("Pinecone connection successful!")
 except Exception as e:
-    st.error(f"Failed to load existing index: {e}")
+    print(f"Pinecone connection failed: {e}")
+    
     try:
         pinecone.create_index(
             name=PINECONE_INDEX_NAME,
