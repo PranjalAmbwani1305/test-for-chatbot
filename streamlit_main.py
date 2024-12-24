@@ -77,12 +77,12 @@ def handle_conversation(user_question):
             response = st.session_state.conversation({'question': user_question})
             st.session_state.chat_history = response['chat_history']
 
-            # Show the conversation history
+            # Show the conversation history with better formatting
             for i, message in enumerate(st.session_state.chat_history):
                 if i % 2 == 0:  # User's message
-                    st.write(f"**You**: {message.content}")
+                    st.markdown(f"**You**: {message.content}")
                 else:  # Bot's message
-                    st.write(f"**Bot**: {message.content}")
+                    st.markdown(f"**Bot**: {message.content}")
         except Exception as e:
             st.error(f"An error occurred during conversation handling: {e}")
             logger.error(f"An error occurred during conversation handling: {e}")  # Log the error
