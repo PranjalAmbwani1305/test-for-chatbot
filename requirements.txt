@@ -6,3 +6,4 @@ PyMuPDF
 torch
 transformers
 sentence-transformers
+langchain-huggingface
