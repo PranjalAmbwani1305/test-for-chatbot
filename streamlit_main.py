@@ -44,25 +44,27 @@ except Exception as e:
 # Create Pinecone index if it doesn't exist
 index_name = PINECONE_INDEX_NAME or "textembedding"  # Default to 'textembedding' if not provided
 if index_name not in pc.list_indexes():
-    print(f"Creating index: {index_name}")
+    print(f"Index {index_name} does not exist. Creating a new one...")
     try:
+        # Create a new Pinecone index
         pc.create_index(
             name=index_name,
-            dimension=384,  # dimension of sentence embeddings
+            dimension=384,  # dimension of sentence embeddings (verify this is correct for your embeddings model)
             metric='cosine',
             spec=ServerlessSpec(
-                cloud='aws', 
+                cloud='aws',
                 region='us-east-1'
             )
         )
         print(f"Index {index_name} created successfully.")
     except Exception as e:
-        raise ValueError(f"Error creating Pinecone index: {str(e)}")
+        print(f"Error creating Pinecone index: {str(e)}")  # Log the error to the console
+        raise ValueError(f"Error creating Pinecone index: {str(e)}")  # Reraise the exception for Streamlit to capture it
 else:
     print(f"Index {index_name} already exists.")
 
 # Load the PDF document
-pdf_path = "gpmc.pdf"  # Ensure this path is correct or modify accordingly
+pdf_path = "gpmc.pdf"  # Replace this with your PDF file path
 loader = PyMuPDFLoader(pdf_path)
 documents = loader.load()
 
@@ -79,29 +81,25 @@ docsearch = Pinecone.from_documents(docs, embeddings, index_name=index_name)
 
 # Set up Hugging Face model
 llm = HuggingFaceEndpoint(
-    repo_id=repo_id, 
-    temperature=0.8, 
-    top_k=50, 
+    repo_id=repo_id,
+    temperature=0.8,
+    top_k=50,
     huggingfacehub_api_token=HUGGINGFACE_API_TOKEN
 )
 
 # Chatbot class to handle queries
 class Chatbot:
     def ask(self, question):
-        # Retrieve relevant document chunks using the retriever
+        # Retrieve relevant document chunks
         retriever = docsearch.as_retriever()
         relevant_docs = retriever.get_relevant_documents(question)  # Correct method here
-        
-        # If no relevant documents are found, inform the user
-        if not relevant_docs:
-            return "Sorry, I couldn't find relevant information. Please try rephrasing your question."
-        
+
         # Get the context from the relevant documents
         context = "\n".join([doc.page_content for doc in relevant_docs])  # Use 'page_content' to get the text
-        
+
         # Combine context with the question to create a prompt
         prompt = f"Context: {context}\nQuestion: {question}\nAnswer:"
-        
+
         # Generate the answer using the Hugging Face model
         response = llm(prompt=prompt)  # Pass the 'prompt' as required by HuggingFaceEndpoint
         return response
