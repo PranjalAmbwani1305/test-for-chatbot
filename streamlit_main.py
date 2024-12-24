@@ -43,6 +43,9 @@ try:
         st.success(f"Index '{PINECONE_INDEX_NAME}' created successfully!")
     else:
         st.success(f"Index '{PINECONE_INDEX_NAME}' already exists.")
+except PineconeApiException as e:
+    if e.status_code == 409:  # Conflict error when the index already exists
+        st.success(f"Index '{PINECONE_INDEX_NAME}' already exists.")
     else:
         st.error(f"Pinecone API Exception: {e}")
     st.stop()
