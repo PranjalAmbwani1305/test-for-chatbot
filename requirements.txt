@@ -4,5 +4,6 @@ transformers
 sentence-transformers
 langchain
 PyPDF2
+langchain-huggingface
 python-dotenv
 
