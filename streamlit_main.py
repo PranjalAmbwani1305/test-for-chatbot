@@ -1,17 +1,17 @@
 import os
 import streamlit as st
-import pinecone
+from pinecone import Pinecone, ServerlessSpec
 from langchain.document_loaders import PyPDFLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.embeddings import HuggingFaceEmbeddings
-from langchain.vectorstores import Pinecone
+from langchain.vectorstores import Pinecone as LangchainPinecone
 from langchain.chains import ConversationalRetrievalChain
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
 load_dotenv()
 PINECONE_API_KEY = os.environ.get("PINECONE_API_KEY")
-PDF_FILE_PATH = 'gpmc.pdf'  # Replace with your PDF file path
+PDF_FILE_PATH = './your_document.pdf'  # Replace with your PDF file path
 
 if not PINECONE_API_KEY:
     st.error("Pinecone API key is not set. Please check your .env file.")
@@ -19,17 +19,27 @@ if not PINECONE_API_KEY:
 
 # Initialize Pinecone
 try:
-    pinecone.init(api_key=PINECONE_API_KEY, environment="us-west1-gcp")  # Specify your environment
+    pc = Pinecone(api_key=PINECONE_API_KEY)
+
     index_name = "pdf-chatbot-index"
 
     # List existing indexes
-    existing_indexes = pinecone.list_indexes()
+    existing_indexes = pc.list_indexes().names()
     st.write("Existing indexes:", existing_indexes)
 
     # Create or reset the Pinecone index
-    if index_name in existing_indexes:
-        pinecone.delete_index(index_name)
-    pinecone.create_index(name=index_name, dimension=768, metric="cosine")
+    if index_name not in existing_indexes:
+        pc.create_index(
+            name=index_name,
+            dimension=768,  # Adjust dimension based on your embeddings
+            metric='cosine',  # or 'euclidean', depending on your use case
+            spec=ServerlessSpec(
+                cloud='aws',  # Specify your cloud provider
+                region='us-west-2'  # Specify your region
+            )
+        )
+    else:
+        st.write(f"Index '{index_name}' already exists.")
 
 except Exception as e:
     st.error(f"Error initializing Pinecone: {e}")
@@ -49,7 +59,7 @@ texts = text_splitter.split_documents(documents)
 
 # Create embeddings and store in Pinecone
 embeddings = HuggingFaceEmbeddings(model_name='all-MiniLM-L6-v2')
-vectordb = Pinecone.from_documents(texts, embeddings, index_name=index_name)
+vectordb = LangchainPinecone.from_documents(texts, embeddings, index_name=index_name)
 
 # Set up the Streamlit app
 st.title("PDF Chatbot")
