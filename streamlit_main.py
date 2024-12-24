@@ -17,7 +17,7 @@ PINECONE_ENV = os.getenv("PINECONE_ENV")
 PINECONE_INDEX_NAME = os.getenv("PINECONE_INDEX_NAME")
 HUGGINGFACE_API_TOKEN = os.getenv("HUGGINGFACE_API_TOKEN")
 
-embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2", api_key=HUGGINGFACE_API_TOKEN)
+embeddings = HuggingFaceEmbeddings(model_name="google/flan-t5-xl", api_key=HUGGINGFACE_API_TOKEN)
 
 try:
     doc_store = Pinecone.from_existing_index(index_name=PINECONE_INDEX_NAME, embedding=embeddings)
@@ -36,9 +36,6 @@ except Exception as e:
     except Exception as create_error:
         st.error(f"Failed to create index: {create_error}")
         st.stop()
-        
-lm_repo_id = "google/flan-t5-xl" 
-llm = HuggingFaceHub(repo_id=llm_repo_id, model_kwargs={"temperature":0.5, "max_length":512}, huggingfacehub_api_token=HUGGINGFACE_API_TOKEN)
 
 
 st.title("Chatbot")
@@ -77,7 +74,9 @@ if doc_store is not None:
     Helpful Answer:"""
     QA_PROMPT = PromptTemplate(template=template, input_variables=["context", "question"])
 
-    llm = HuggingFaceHub(repo_id=HUGGINGFACE_REPO_ID, model_kwargs={"temperature":0.5, "max_length":512},huggingfacehub_api_token=HUGGINGFACE_API_TOKEN)
+    
+llm_repo_id = "google/flan-t5-xl" 
+llm = HuggingFaceHub(repo_id=llm_repo_id, model_kwargs={"temperature":0.5, "max_length":512}, huggingfacehub_api_token=HUGGINGFACE_API_TOKEN)
 
     qa = RetrievalQA.from_chain_type(llm=llm, chain_type="stuff", retriever=doc_store.as_retriever(), return_source_documents=True, chain_type_kwargs={"prompt": QA_PROMPT})
 
