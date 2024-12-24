@@ -6,6 +6,7 @@ from langchain.chains import RetrievalQA
 from langchain.chat_models import ChatOpenAI
 import pinecone
 import os
+import io 
 
 os.environ['HUGGINGFACE_API_KEY'] = st.secrets["HUGGINGFACE_API_KEY"]
 os.environ['PINECONE_API_KEY'] = st.secrets["PINECONE_API_KEY"]
