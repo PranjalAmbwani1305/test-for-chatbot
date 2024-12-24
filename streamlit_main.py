@@ -10,7 +10,7 @@ from huggingface_hub import login
 from langchain.text_splitter import CharacterTextSplitter
 
 # Log in to Hugging Face
-login(token='YOUR_HUGGINGFACE_TOKEN')
+login(token='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')
 
 # Load environment variables
 load_dotenv()
