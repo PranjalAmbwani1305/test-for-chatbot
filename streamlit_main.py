@@ -15,10 +15,6 @@ PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
 PINECONE_ENV = os.getenv("PINECONE_ENV")
 HUGGINGFACE_API_TOKEN = os.getenv("HUGGINGFACE_API_TOKEN")
 
-pinecone.init(api_key=PINECONE_API_KEY, environment=PINECONE_ENV)
-index_name = "textembedding"
-if index_name not in pinecone.list_indexes():
-    pinecone.create_index(index_name, dimension=768)
 
 model_name = "sentence-transformers/all-MiniLM-L6-v2"
 embeddings = HuggingFaceEmbeddings(model_name=model_name)
