@@ -73,7 +73,7 @@ def main():
     st.title("PDF Embedding and Retrieval Chatbot")
 
     # Load the specific PDF file
-    pdf_file_path = "gmpc.pdf"  # Ensure this file is in the same directory as your script
+    pdf_file_path = "gpmc.pdf"  # Ensure this file is in the same directory as your script
 
     if os.path.exists(pdf_file_path):
         # Load and process the PDF
