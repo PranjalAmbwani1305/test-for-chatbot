@@ -23,6 +23,10 @@ if not HUGGINGFACE_API_TOKEN:
     raise ValueError("HuggingFace API Token is missing from the environment variables.")
 if not PINECONE_API_KEY:
     raise ValueError("Pinecone API Key is missing from the environment variables.")
+if not PINECONE_ENV:
+    raise ValueError("Pinecone Environment is missing from the environment variables.")
+if not PINECONE_INDEX_NAME:
+    raise ValueError("Pinecone Index Name is missing from the environment variables.")
 
 # HuggingFace API Login
 login(token=HUGGINGFACE_API_TOKEN)
@@ -36,7 +40,7 @@ except Exception as e:
 
 # Initialize Pinecone client
 try:
-    pc = PineconeClient(api_key=PINECONE_API_KEY)
+    pc = PineconeClient(api_key=PINECONE_API_KEY, environment=PINECONE_ENV)
     print("Pinecone client initialized.")
 except Exception as e:
     raise ValueError(f"Pinecone client initialization failed: {str(e)}")
@@ -45,7 +49,10 @@ except Exception as e:
 index_name = PINECONE_INDEX_NAME or "textembedding"  # Default to 'textembedding' if not provided
 
 try:
-    if index_name not in pc.list_indexes():
+    existing_indexes = pc.list_indexes()
+    print(f"Existing indexes: {existing_indexes}")
+    
+    if index_name not in existing_indexes:
         print(f"Index {index_name} does not exist. Creating a new one...")
         # Create a new Pinecone index
         pc.create_index(
@@ -82,40 +89,4 @@ docsearch = Pinecone.from_documents(docs, embeddings, index_name=index_name)
 
 # Set up Hugging Face model
 llm = HuggingFaceEndpoint(
-    repo_id=repo_id,
-    temperature=0.8,
-    top_k=50,
-    huggingfacehub_api_token=HUGGINGFACE_API_TOKEN
-)
-
-# Chatbot class to handle queries
-class Chatbot:
-    def ask(self, question):
-        # Retrieve relevant document chunks
-        retriever = docsearch.as_retriever()
-        relevant_docs = retriever.get_relevant_documents(question)  # Correct method here
-
-        # Get the context from the relevant documents
-        context = "\n".join([doc.page_content for doc in relevant_docs])  # Use 'page_content' to get the text
-
-        # Combine context with the question to create a prompt
-        prompt = f"Context: {context}\nQuestion: {question}\nAnswer:"
-
-        # Generate the answer using the Hugging Face model
-        response = llm(prompt=prompt)  # Pass the 'prompt' as required by HuggingFaceEndpoint
-        return response
-
-# Set up the Streamlit UI
-st.title("Chatbot")
-
-# Get user input for the query
-query = st.text_input("Enter your query:")
-
-if query:
-    with st.spinner("Generating response..."):
-        try:
-            chatbot = Chatbot()
-            response = chatbot.ask(query)
-            st.write("Answer:", response)
-        except Exception as e:
-            st.error(f"Error: {e}")
+    repo
