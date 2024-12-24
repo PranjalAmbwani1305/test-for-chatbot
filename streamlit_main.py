@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 import streamlit as st
 from PyPDF2 import PdfReader
 import pinecone
-import huggingface
+import huggingface_hub
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain.vectorstores import Pinecone
 from langchain.chains import RetrievalQA
