@@ -2,7 +2,7 @@ import os
 import streamlit as st
 import pinecone
 from dotenv import load_dotenv
-from PyPDF2 import PdfReader
+from langchain_community.document_loaders import PyMuPDFLoader  
 from pinecone import Pinecone as PineconeClient , ServerlessSpe
 from langchain.text_splitter import CharacterTextSplitter
 from langchain.embeddings import HuggingFaceInstructEmbeddings
