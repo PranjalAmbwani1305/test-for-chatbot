@@ -3,7 +3,7 @@ import streamlit as st
 import pinecone
 from dotenv import load_dotenv
 from langchain_community.document_loaders import PyMuPDFLoader  
-from pinecone import Pinecone as PineconeClient , ServerlessSpe
+from pinecone import Pinecone as PineconeClient, ServerlessSpec
 from langchain.text_splitter import CharacterTextSplitter
 from langchain.embeddings import HuggingFaceInstructEmbeddings
 from langchain.vectorstores import Pinecone
