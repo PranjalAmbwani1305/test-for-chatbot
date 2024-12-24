@@ -44,7 +44,8 @@ try:
     else:
         st.success(f"Index '{PINECONE_INDEX_NAME}' already exists.")
 except PineconeApiException as e:
-    if e.status_code == 409:  # Conflict error when the index already exists
+    error_response = e.args[0]
+    if "ALREADY_EXISTS" in error_response:  # Conflict error when the index already exists
         st.success(f"Index '{PINECONE_INDEX_NAME}' already exists.")
     else:
         st.error(f"Pinecone API Exception: {e}")
