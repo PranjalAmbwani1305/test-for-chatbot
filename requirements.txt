@@ -1,6 +1,7 @@
 streamlit
 pinecone-client
 transformers
+sentence-transformers
 langchain
 PyPDF2
 python-dotenv
