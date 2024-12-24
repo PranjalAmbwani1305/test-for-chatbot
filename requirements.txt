@@ -1,9 +1,9 @@
-streamlit
-pinecone-client
-transformers
+langchain>=0.0.170
+pinecone-client>=2.2.1
 sentence-transformers
-langchain
+transformers
+streamlit
 PyPDF2
-langchain-huggingface
 python-dotenv
-
+huggingface_hub
+pymupdf
