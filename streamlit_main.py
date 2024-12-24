@@ -20,42 +20,30 @@ HUGGINGFACE_REPO_ID = os.getenv("HUGGINGFACE_REPO_ID")
 
 login(HUGGINGFACE_API_TOKEN)
 
-# Initialize Pinecone
-try:
-    pc = Pinecone(api_key=PINECONE_API_KEY, environment=PINECONE_ENV)
-except Exception as e:
-    st.error(f"Error initializing Pinecone: {e}")
-    st.stop()
 
-# Initialize HuggingFace Embeddings
 try:
     embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
 except Exception as e:
     st.error(f"Error initializing embeddings: {e}")
     st.stop()
 
-# Check if the index exists, delete if necessary, and initialize it
+pc = PineconeClient(api_key=os.getenv('PINECONE_API_KEY')) 
+        # Create Pinecone index if it doesn't exist
+        if index_name not in pc.list_indexes().names():
+            pc.create_index(
+                name=self.index_name,
+                dimension=346,  
+                metric='cosine',
+                spec=ServerlessSpec(
+                    cloud='aws', 
+                    region='us-east-1'  
+                )
+            )
+
 try:
-    # Check if the index already exists
-    index_exists = PINECONE_INDEX_NAME in pc.list_indexes()
-    if index_exists:
-        st.info(f"Using existing index: {PINECONE_INDEX_NAME}")
-        index = pc.index(PINECONE_INDEX_NAME)
-        doc_store = LangchainPinecone.from_existing_index(index_name=PINECONE_INDEX_NAME, embedding=embeddings)
-    else:
-        # If the index does not exist, create it
-        pc.create_index(
-            name=PINECONE_INDEX_NAME,
-            dimension=embeddings.embed_query("Sample").__len__(),
-            metric="cosine",
-            spec=ServerlessSpec(cloud='aws', region='us-east-1')  # Change region to us-east-1
-        )
-        st.success(f"Index '{PINECONE_INDEX_NAME}' created successfully!")
-        index = pc.index(PINECONE_INDEX_NAME)
-        doc_store = LangchainPinecone.from_existing_index(index_name=PINECONE_INDEX_NAME, embedding=embeddings)
-        st.info("Document store initialized after index creation.")
+    embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
 except Exception as e:
-    st.error(f"Failed to load or create index: {e}")
+    st.error(f"Error initializing embeddings: {e}")
     st.stop()
 
 # Set up the chatbot interface
