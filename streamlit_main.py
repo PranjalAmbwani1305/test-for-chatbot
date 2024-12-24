@@ -3,6 +3,7 @@ import streamlit as st
 import pinecone
 from dotenv import load_dotenv
 from langchain.document_loaders import PyMuPDFLoader
+from langchain.embeddings import HuggingFaceInstructEmbeddings
 from langchain.vectorstores import Pinecone
 from langchain.memory import ConversationBufferMemory
 from langchain.chains import ConversationalRetrievalChain
