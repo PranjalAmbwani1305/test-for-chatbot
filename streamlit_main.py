@@ -25,7 +25,6 @@ TEMPERATURE = 0.5
 MAX_LENGTH = 512
 PDF_FILE_PATH = "gmpc.pdf"  # Path to your PDF
 
-@st.cache_resource
 def initialize_resources():
     try:
         embeddings_model = HuggingFaceInstructEmbeddings(model_name=MODEL_NAME)
