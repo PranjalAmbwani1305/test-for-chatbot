@@ -13,8 +13,31 @@ from langchain.llms import HuggingFaceHub
 # Load environment variables
 load_dotenv()
 
-# Initialize Pinecone client
-pinecone_client = pinecone.Client(api_key=os.getenv("PINECONE_API_KEY"), environment="us-east1-gcp")
+s.environ['HUGGINGFACE_API_KEY'] = st.secrets["HUGGINGFACE_API_KEY"]
+os.environ['PINECONE_API_KEY'] = st.secrets["PINECONE_API_KEY"]
+
+class PDFLoader:
+    def __init__(self, pdf_file):
+
+        text_splitter = CharacterTextSplitter(chunk_size=4000, chunk_overlap=4)
+        self.docs = text_splitter.split_documents([Document(page_content=self.extracted_text)])
+
+        self.index_name = "chatbot"
+        self.pc = PineconeClient(api_key=os.getenv('PINECONE_API_KEY'))
+
+        if self.index_name not in self.pc.list_indexes().names():
+            self.pc.create_index(
+                name=self.index_name,
+                dimension=384,
+                metric='cosine',
+            )
+            st.write(f"Index '{self.index_name}' created.")
+        else:
+            st.write(f"Index '{self.index_name}' already exists.")
+
+        self.index = self.pc.Index(self.index_name)
+
+   
 
 def extract_text_from_pdfs(pdf_files):
     """
