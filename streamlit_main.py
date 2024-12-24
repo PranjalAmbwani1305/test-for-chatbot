@@ -20,32 +20,35 @@ HUGGINGFACE_REPO_ID = os.getenv("HUGGINGFACE_REPO_ID")
 
 login(HUGGINGFACE_API_TOKEN)
 
+# Initialize Pinecone
 try:
     pc = Pinecone(api_key=PINECONE_API_KEY, environment=PINECONE_ENV)
 except Exception as e:
     st.error(f"Error initializing Pinecone: {e}")
     st.stop()
 
+# Initialize HuggingFace Embeddings
 try:
     embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
 except Exception as e:
     st.error(f"Error initializing embeddings: {e}")
     st.stop()
 
+# Check if the index exists, delete if necessary, and initialize it
 try:
     # Check if the index already exists
     index_exists = PINECONE_INDEX_NAME in pc.list_indexes()
     if index_exists:
+        st.info(f"Using existing index: {PINECONE_INDEX_NAME}")
         index = pc.index(PINECONE_INDEX_NAME)
         doc_store = LangchainPinecone.from_existing_index(index_name=PINECONE_INDEX_NAME, embedding=embeddings)
-        st.info(f"Using existing index: {PINECONE_INDEX_NAME}")
     else:
-        # Create the index if it doesn't exist
+        # If the index does not exist, create it
         pc.create_index(
             name=PINECONE_INDEX_NAME,
             dimension=embeddings.embed_query("Sample").__len__(),
             metric="cosine",
-            spec=ServerlessSpec(cloud='aws', region='us-east-1')  # Change region if necessary
+            spec=ServerlessSpec(cloud='aws', region='us-east-1')  # Change region to us-east-1
         )
         st.success(f"Index '{PINECONE_INDEX_NAME}' created successfully!")
         index = pc.index(PINECONE_INDEX_NAME)
@@ -55,11 +58,11 @@ except Exception as e:
     st.error(f"Failed to load or create index: {e}")
     st.stop()
 
-# Title for the Streamlit app
+# Set up the chatbot interface
 st.title("Chatbot")
-
-# PDF document loading and text extraction
 pdf_path = "gpmc.pdf"
+
+# Load and read the PDF document
 try:
     pdf_reader = PdfReader(pdf_path)
     pdf_text = ""
@@ -72,11 +75,11 @@ except Exception as e:
     st.error(f"Error reading PDF: {e}")
     st.stop()
 
-# Split the document into chunks for indexing
+# Chunk the text into smaller parts for embedding
 chunk_size = 500
 text_chunks = [pdf_text[i:i + chunk_size] for i in range(0, len(pdf_text), chunk_size)]
 
-# Indexing the document into Pinecone
+# Index the document text into Pinecone
 if doc_store is not None:
     with st.spinner("Indexing document..."):
         batch_size = 32
@@ -89,14 +92,13 @@ if doc_store is not None:
             vectors = [(ids[j], embeds[j], metadata[j]) for j in range(len(batch))]
             
             try:
-                # Upsert the vectors into the Pinecone index
                 index.upsert(vectors=vectors)
             except Exception as e:
                 st.error(f"Error during upsert: {e}")
                 st.stop()
         st.success("Document indexed successfully!")
 
-    # Define prompt template for the chatbot
+    # Set up the question-answering system
     template = """Use the following pieces of context to answer the question at the end. If you don't know the answer, just say that you don't know, don't try to make up an answer.
 
     {context}
@@ -105,19 +107,13 @@ if doc_store is not None:
     Helpful Answer:"""
     QA_PROMPT = PromptTemplate(template=template, input_variables=["context", "question"])
 
-    # Initialize the language model from Hugging Face Hub
+    # Initialize the language model for QA
     llm = HuggingFaceHub(repo_id=HUGGINGFACE_REPO_ID, model_kwargs={"temperature": 0.5, "max_length": 1024}, huggingfacehub_api_token=HUGGINGFACE_API_TOKEN)
 
-    # Setup the RetrievalQA chain with the index and language model
-    qa = RetrievalQA.from_chain_type(
-        llm=llm,
-        chain_type="stuff",
-        retriever=doc_store.as_retriever(),
-        return_source_documents=True,
-        chain_type_kwargs={"prompt": QA_PROMPT}
-    )
+    # Set up the QA chain with the retriever from Pinecone
+    qa = RetrievalQA.from_chain_type(llm=llm, chain_type="stuff", retriever=doc_store.as_retriever(), return_source_documents=True, chain_type_kwargs={"prompt": QA_PROMPT})
 
-    # Input query and generate response
+    # Get user input for the query
     query = st.text_input("Enter your query:")
     if query:
         with st.spinner("Generating response..."):
