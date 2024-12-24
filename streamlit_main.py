@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 # Load environment variables from .env file
 load_dotenv()
 PINECONE_API_KEY = os.environ.get("PINECONE_API_KEY")
-PDF_FILE_PATH = 'gpmc.pdf' 
+PDF_FILE_PATH = 'gpmc.pdf'  # Replace with your PDF file path
 
 if not PINECONE_API_KEY:
     st.error("Pinecone API key is not set. Please check your .env file.")
@@ -19,7 +19,7 @@ if not PINECONE_API_KEY:
 
 # Initialize Pinecone
 try:
-    pinecone.init(api_key=PINECONE_API_KEY, environment="us-west1-gcp") 
+    pinecone.init(api_key=PINECONE_API_KEY, environment="us-west1-gcp")  # Specify your environment
     index_name = "pdf-chatbot-index"
 
     # List existing indexes
