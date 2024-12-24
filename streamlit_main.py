@@ -6,7 +6,7 @@ from langchain.embeddings import HuggingFaceEmbeddings
 from langchain.vectorstores import Pinecone
 from langchain.chains import RetrievalQA
 from langchain.llms import HuggingFaceEndpoint
-from pinecone import Client as PineconeClient, ServerlessSpec  
+from pinecone import Pinecone as PineconeClient, ServerlessSpec  
 from dotenv import load_dotenv
 from langchain.text_splitter import CharacterTextSplitter
 
