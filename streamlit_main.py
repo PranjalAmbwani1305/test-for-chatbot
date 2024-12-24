@@ -9,6 +9,7 @@ from langchain.memory import ConversationBufferMemory
 from langchain.chains import ConversationalRetrievalChain
 from langchain.llms import HuggingFaceHub
 import pinecone
+from langchain.embeddings import HuggingFaceEmbeddings
 
 # Load environment variables from .env
 load_dotenv()
@@ -39,7 +40,7 @@ def get_text_chunks(text):
 
 # Function to create a Pinecone vector store using Hugging Face embeddings
 def get_vectorstore(text_chunks):
-    embeddings = HuggingFaceInstructEmbeddings(model_name="hkunlp/instructor-xl")
+    mbeddings_model = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
     
     # Create Pinecone index for storing vectors
     index_name = "chatbot"
