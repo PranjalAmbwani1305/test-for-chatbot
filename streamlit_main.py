@@ -20,10 +20,9 @@ HUGGINGFACE_API_TOKEN = os.getenv("HUGGINGFACE_API_TOKEN")
 model_name = "sentence-transformers/all-MiniLM-L6-v2"
 embeddings = HuggingFaceEmbeddings()
 
-doc_store = Pinecone(
-    index_name="textembedding",        
-    embedding_function=embeddings.embed_query,  
-    text_field="text"                  
+doc_store = Pinecone.from_existing_index(
+    index_name="textembedding",  # Replace with your actual Pinecone index name
+    embedding_function=embeddings.embed_query  # Function to get the embedding
 )
 st.title("Chatbot")
 
