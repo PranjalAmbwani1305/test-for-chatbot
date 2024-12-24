@@ -6,3 +6,4 @@ langchain_community
 pinecone-client
 pinecone
 sentence-transformers
+PyMuPD
