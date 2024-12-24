@@ -77,7 +77,7 @@ def main():
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = []
 
-    st.title("Chatbot with PDF Document Integration")
+    st.title("Chatbot ")
     user_question = st.text_input("Ask a question about the document:")
 
     pdf_paths = ["gpmc.pdf"]
