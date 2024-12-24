@@ -43,6 +43,8 @@ try:
         st.success(f"Index '{PINECONE_INDEX_NAME}' created successfully!")
     else:
         st.success(f"Index '{PINECONE_INDEX_NAME}' already exists.")
+    else:
+        st.error(f"Pinecone API Exception: {e}")
     st.stop()
 
 # Initialize embeddings
