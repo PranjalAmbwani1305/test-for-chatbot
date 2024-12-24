@@ -1,110 +1,147 @@
 import os
 import streamlit as st
-import pinecone
-from dotenv import load_dotenv
-from langchain_community.document_loaders import PyMuPDFLoader
-from langchain.embeddings import HuggingFaceInstructEmbeddings
+from langchain.prompts import PromptTemplate
+from langchain.document_loaders import PyMuPDFLoader
+from langchain.embeddings import HuggingFaceEmbeddings
 from langchain.vectorstores import Pinecone
-from langchain.memory import ConversationBufferMemory
-from langchain.chains import ConversationalRetrievalChain
-from langchain.llms import HuggingFaceHub
-import logging
+from langchain.schema import RunnablePassthrough
+from langchain.schema.output_parser import StrOutputParser
+from pinecone import Pinecone as PineconeClient, ServerlessSpec  
+from dotenv import load_dotenv
+from huggingface_hub import login
+from langchain.text_splitter import CharacterTextSplitter
+
+# Log in to Hugging Face
+login(token='YOUR_HUGGINGFACE_TOKEN')
 
 # Load environment variables
 load_dotenv()
 
-# Set up logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+# Set up API keys
+os.environ['HUGGINGFACE_API_KEY'] = st.secrets["HUGGINGFACE_API_KEY"]
+os.environ['PINECONE_API_KEY'] = st.secrets["PINECONE_API_KEY"]
 
-def generate_embeddings_for_chunks(text_chunks):
-    """
-    Generate embeddings for each chunk of text using HuggingFace model.
-    """
-    embeddings_model = HuggingFaceInstructEmbeddings(model_name="hkunlp/instructor-xl")
-    embeddings = [embeddings_model.embed(chunk) for chunk in text_chunks]
-    logger.info(f"Generated {len(embeddings)} embeddings.")  # Log the number of embeddings
-    return embeddings
-
-def initialize_pinecone_vector_store(text_chunks, embeddings):
-    """
-    Initialize the Pinecone vector store and upload embeddings.
-    """
-    index_name = "gpmc_chatbot"
-    pinecone_api_key = os.getenv("PINECONE_API_KEY")
-    pinecone_environment = os.getenv("PINECONE_ENV")
-
-    # Initialize Pinecone
-    pinecone.init(api_key=pinecone_api_key, environment=pinecone_environment)
-
-    try:
-        # Check if the index exists, if not, create it
-        if index_name not in pinecone.list_indexes():
-            pinecone.create_index(index_name, dimension=len(embeddings[0]))
-
-        # Connect to the index
-        pinecone_index = pinecone.Index(index_name)
-
-        # Prepare IDs for the embeddings
-        ids = [str(i) for i in range(len(text_chunks))]
+class Chatbot:
+    def __init__(self):
+        # Load PDF data
+        loader = PyMuPDFLoader('gpmc.pdf') 
+        documents = loader.load()
         
-        # Upsert the embeddings into the Pinecone index
-        pinecone_index.upsert(vectors=zip(ids, embeddings))
+        # Split documents into smaller chunks
+        text_splitter = CharacterTextSplitter(chunk_size=4000, chunk_overlap=4)
+        self.docs = text_splitter.split_documents(documents)
 
-        logger.info(f"Uploaded {len(ids)} embeddings to Pinecone.")  # Log the success
-        return Pinecone(index=pinecone_index, embedding_function=HuggingFaceInstructEmbeddings(model_name="hkunlp/instructor-xl"))
+        # Initialize Hugging Face embeddings
+        self.embeddings = HuggingFaceEmbeddings()
 
-    except Exception as e:
-        logger.error(f"An error occurred while initializing Pinecone: {e}")
-        return None
+        # Define the index name
+        self.index_name = "chatbot"
 
-def load_pdf_and_process(file_path):
-    """
-    Load a PDF file and process it into text chunks.
-    """
-    logger.info(f"Loading PDF from {file_path}")
-    loader = PyMuPDFLoader(file_path)
-    documents = loader.load()
-    text_chunks = [doc.page_content for doc in documents]
-    logger.info(f"Loaded {len(text_chunks)} chunks from the PDF.")
-    return text_chunks
-
-def main():
-    st.title("GPMC PDF Query Chatbot")
-
-    # Load the specific PDF file
-    pdf_file_path = "gpmc.pdf"  # Ensure this file is in the same directory as your script
-
-    if os.path.exists(pdf_file_path):
-        # Load and process the PDF
-        text_chunks = load_pdf_and_process(pdf_file_path)
-        embeddings = generate_embeddings_for_chunks(text_chunks)
-
-        # Initialize Pinecone and upload embeddings
-        vector_store = initialize_pinecone_vector_store(text_chunks, embeddings)
-
-        if vector_store is not None:
-            st.success("Embeddings uploaded successfully!")
-
-            # Set up conversation memory
-            memory = ConversationBufferMemory()
-
-            # Create a conversational retrieval chain
-            llm = HuggingFaceHub(repo_id="gpt2")  # Replace with your desired model
-            conversational_chain = ConversationalRetrievalChain(
-                retriever=vector_store.as_retriever(),
-                llm=llm,
-                memory=memory
+        # Initialize Pinecone client
+        self.pc = PineconeClient(api_key=os.getenv('PINECONE_API_KEY')) 
+        # Create Pinecone index if it doesn't exist
+        if self.index_name not in self.pc.list_indexes().names():
+            self.pc.create_index(
+                name=self.index_name,
+                dimension=384,  
+                metric='cosine',
+                spec=ServerlessSpec(
+                    cloud='aws', 
+                    region='us-east-1'  
+                )
             )
 
-            user_input = st.text_input("Ask a question about the GPMC Act:")
-            if user_input:
-                response = conversational_chain({"question": user_input})
-                st.write(response['answer'])
-        else:
-            st.error("Failed to initialize Pinecone vector store.")
-    else:
-        st.error(f"The file {pdf_file_path} does not exist. Please ensure it is in the same directory.")
+        # Set up Hugging Face model
+        repo_id = "hkunlp/instructor-xl"
+        self.llm = HuggingFaceEndpoint(
+            repo_id=repo_id, 
+            temperature=0.8, 
+            top_k=50, 
+            huggingfacehub_api_token=os.getenv('HUGGINGFACE_API_KEY')
+        )
 
-if __name__ == "__main__":
-    main()
+        # Define the prompt template
+        template = """
+        You are a chatbot for the Ahmedabad Government. Corporation workers will ask questions regarding the procedures in the GPMC act. 
+        Answer these questions and give answers to process in a step by step process.
+        If you don't know the answer, just say you don't know. 
+
+        Context: {context}
+        Question: {question}
+        Answer: 
+        """
+        self.prompt = PromptTemplate(
+            template=template, 
+            input_variables=["context", "question"]
+        )
+
+        # Initialize Pinecone index with documents
+        self.docsearch = Pinecone.from_documents(self.docs, self.embeddings, index_name=self.index_name)
+
+
+    def ask(self, question):
+        return self.rag_chain.invoke(question)                                                                                                                                   
+
+# Streamlit UI
+st.set_page_config(page_title="GPMC BOT")
+
+# Sidebar configuration
+with st.sidebar:
+    st.title("Chatbot")
+
+# Cache the Chatbot instance
+@st.cache_resource
+def get_chatbot():
+    return Chatbot()
+
+# Function to clean and format the response
+def generate_response(input_text):
+    bot = get_chatbot()
+    response = bot.ask(input_text)
+
+    # Clean special characters and format the response
+    response_parts = response.split("\n")
+    formatted_response = []
+    current_part = ""
+
+    for part in response_parts:
+        # Detect start of a new numbered section
+        if part.strip().isdigit() or part.strip().startswith(tuple(str(i) for i in range(1, 10))) or part.strip().startswith(("404.", "405.")):
+            if current_part:  # Append the previous part before starting a new one
+                formatted_response.append(current_part.strip())
+            current_part = f"{part.strip()} "  # Start a new numbered section
+        else:
+            current_part += part.strip() + " "  # Continue the current section
+    
+    # Append the last accumulated section if there's any leftover
+    if current_part:
+        formatted_response.append(current_part.strip())
+    
+    # Join each section with a newline and bullet point format
+    return "\n\n".join(f"- {part}" for part in formatted_response)
+
+# Display chat messages
+for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+        st.write(message["content"])
+
+# Process user input and generate response
+if input_text := st.chat_input("Type your question here..."):
+    # Append user message to session state
+    st.session_state.messages.append({"role": "user", "content": input_text})
+    with st.chat_message("user"):
+        st.write(input_text)
+
+    # Generate response
+    with st.chat_message("assistant"):
+        with st.spinner("Generating response..."):
+            response = generate_response(input_text)
+
+            # Display the formatted response
+            if isinstance(response, str) and len(response) > 100:
+                st.markdown(response)
+            else:
+                st.write(response)
+
+        # Append assistant's response to session state
+        st.session_state.messages.append({"role": "assistant", "content": response})
