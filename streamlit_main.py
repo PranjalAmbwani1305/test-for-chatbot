@@ -2,7 +2,7 @@ import os
 import streamlit as st
 import pinecone
 from dotenv import load_dotenv
-from langchain_community.document_loaders import PyMuPDFLoader
+from langchain.document_loaders import PyMuPDFLoader
 from langchain.embeddings import HuggingFaceInstructEmbeddings
 from langchain.vectorstores import Pinecone
 from langchain.memory import ConversationBufferMemory
@@ -11,165 +11,103 @@ from langchain.llms import HuggingFaceHub
 import time
 import logging
 
-# Load environment variables
+# Load environment variables and configure logging
 load_dotenv()
-
-# Set up logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-def generate_embeddings_for_chunks(text_chunks):
-    """
-    Generate embeddings for each chunk of text using HuggingFace model.
-    """
-    embeddings_model = HuggingFaceInstructEmbeddings(model_name="hkunlp/instructor-xl")
-    embeddings = [embeddings_model.embed(chunk) for chunk in text_chunks]
-    logger.info(f"Generated {len(embeddings)} embeddings.")  # Log the number of embeddings
-    return embeddings
+# Constants
+INDEX_NAME = "chatbot"
+MODEL_NAME = "hkunlp/instructor-xl"
+LLM_MODEL = "google/flan-t5-xxl"
+CHUNK_SIZE = 512
+TEMPERATURE = 0.5
+MAX_LENGTH = 512
+PDF_FILE_PATH = "gmpc.pdf"  # Path to your PDF
 
-def initialize_pinecone_vector_store(text_chunks, embeddings):
-    """
-    Initialize the Pinecone vector store and upload embeddings.
-    """
-    index_name = "chatbot"
-    pinecone_api_key = os.getenv("PINECONE_API_KEY")
-    pinecone_environment = os.getenv("PINECONE_ENV")
-
-    pinecone.init(api_key=pinecone_api_key, environment=pinecone_environment)
-    pinecone_client = pinecone
-
+@st.cache_resource
+def initialize_resources():
     try:
-        if index_name not in pinecone_client.list_indexes():
-            pinecone_client.create_index(index_name, dimension=len(embeddings[0]))
-
-        pinecone_index = pinecone_client.Index(index_name)
-        ids = [str(i) for i in range(len(text_chunks))]
-        pinecone_index.upsert(vectors=zip(ids, embeddings))
-
-        logger.info(f"Uploaded {len(ids)} embeddings to Pinecone.")  # Log the success
-        return Pinecone(index=pinecone_index, embedding_function=generate_embeddings_for_chunks)
+        embeddings_model = HuggingFaceInstructEmbeddings(model_name=MODEL_NAME)
+        pinecone.init(api_key=os.getenv("PINECONE_API_KEY"), environment=os.getenv("PINECONE_ENV"))
+        llm = HuggingFaceHub(repo_id=LLM_MODEL, model_kwargs={"temperature": TEMPERATURE, "max_length": MAX_LENGTH})
+        return embeddings_model, llm
     except Exception as e:
-        st.error(f"Error initializing Pinecone vector store: {e}")
-        logger.error(f"Error initializing Pinecone vector store: {e}")  # Log the error
+        logger.error(f"Error initializing resources: {e}")
+        st.error(f"Error initializing resources: {e}")
+        return None, None
+
+def initialize_pinecone_index(embeddings_model):
+    try:
+        if INDEX_NAME not in pinecone.list_indexes():
+            pinecone.create_index(INDEX_NAME, dimension=len(embeddings_model.embed("test")))
+        index = pinecone.Index(INDEX_NAME)
+        return Pinecone(index, embeddings_model.embed_query)
+    except Exception as e:
+        logger.error(f"Pinecone index error: {e}")
+        st.error(f"Pinecone index error: {e}")
         return None
 
-def create_conversational_chain(vectorstore):
-    """
-    Create a conversational chain using HuggingFace LLM and vector store retriever.
-    """
-    llm = HuggingFaceHub(repo_id="google/flan-t5-xxl", model_kwargs={"temperature": 0.5, "max_length": 512})
-    memory = ConversationBufferMemory(memory_key='chat_history', return_messages=True)
-    logger.info("Creating conversation chain...")  # Log chain creation
-    return ConversationalRetrievalChain.from_llm(
-        llm=llm,
-        retriever=vectorstore.as_retriever(),
-        memory=memory
-    )
-
-def handle_conversation(user_question):
-    """
-    Handle user queries using the conversational chain and simulate a bot response.
-    """
-    if st.session_state.conversation:
-        try:
-            with st.spinner("Bot is typing..."):
-                time.sleep(2)  # Simulate typing time
-            response = st.session_state.conversation({'question': user_question})
-            st.session_state.chat_history = response['chat_history']
-
-            # Show the conversation history with better formatting
-            for i, message in enumerate(st.session_state.chat_history):
-                if i % 2 == 0:  # User's message
-                    st.markdown(f"**You**: {message.content}")
-                else:  # Bot's message
-                    st.markdown(f"**Bot**: {message.content}")
-        except Exception as e:
-            st.error(f"An error occurred during conversation handling: {e}")
-            logger.error(f"An error occurred during conversation handling: {e}")  # Log the error
-    else:
-        st.warning("The conversation has not been initialized yet. Please ensure the PDF is processed correctly.")
-
-def extract_text_from_pdf(pdf_file_path):
-    """
-    Extract text from the given PDF file using PyMuPDF.
-    """
+def process_pdf(pdf_file_path, embeddings_model, vectorstore):
     try:
         loader = PyMuPDFLoader(pdf_file_path)
-        documents = loader.load()
-        text = "\n".join([doc.page_content for doc in documents])  # Assuming loader returns documents with `page_content`
-        logger.info(f"Extracted {len(text)} characters from the PDF.")  # Log extraction length
-        return text
+        docs = loader.load()
+        text = "\n".join([doc.page_content for doc in docs])
+        chunks = [text[i:i + CHUNK_SIZE] for i in range(0, len(text), CHUNK_SIZE)]
+        ids = [str(i) for i in range(len(chunks))]
+        embeddings = [embeddings_model.embed(chunk) for chunk in chunks]
+        if vectorstore:
+            vectorstore.add_embeddings(text_embeddings=list(zip(embeddings, [{"text": chunk} for chunk in chunks])), ids=ids)
+        logger.info(f"Processed {len(chunks)} from PDF.")
+        return True
     except Exception as e:
-        st.error(f"Failed to extract text from PDF: {e}")
-        logger.error(f"Failed to extract text from PDF: {e}")  # Log the error
-        return ""
-
-def split_text_into_chunks(text, chunk_size=512):
-    """
-    Split the extracted text into chunks of a specified size.
-    """
-    words = text.split()
-    chunks = []
-    current_chunk = []
-    
-    for word in words:
-        current_chunk.append(word)
-        if len(" ".join(current_chunk)) > chunk_size:
-            chunks.append(" ".join(current_chunk))
-            current_chunk = []
-    if current_chunk:
-        chunks.append(" ".join(current_chunk))
-    
-    logger.info(f"Split text into {len(chunks)} chunks.")  # Log the number of chunks
-    return chunks
+        logger.error(f"PDF processing error: {e}")
+        st.error(f"PDF processing error: {e}")
+        return False
 
 def main():
-    """
-    Main function to initialize and run the chatbot application.
-    """
+    st.title("GMP PDF Chatbot")
+
+    embeddings_model, llm = initialize_resources()
+    if not embeddings_model or not llm:
+        return
+
+    vectorstore = initialize_pinecone_index(embeddings_model)
+    if not vectorstore:
+        return
 
     if "conversation" not in st.session_state:
         st.session_state.conversation = None
-    if "chat_history" not in st.session_state:
         st.session_state.chat_history = []
 
-    st.title("Chatbot")
-    user_question = st.text_input("Ask a question about the document:")
+    # Process the PDF automatically if it exists
+    if os.path.exists(PDF_FILE_PATH):
+        with st.spinner("Processing PDF..."):
+            if process_pdf(PDF_FILE_PATH, embeddings_model, vectorstore):
+                memory = ConversationBufferMemory(memory_key='chat_history', return_messages=True)
+                st.session_state.conversation = ConversationalRetrievalChain.from_llm(
+                    llm=llm, retriever=vectorstore.as_retriever(), memory=memory
+                )
+                st.success("PDF processed. You can now ask questions.")
+            else:
+                st.error(f"Could not process {PDF_FILE_PATH}. Please ensure it exists.")
+    else:
+        st.error(f"PDF file '{PDF_FILE_PATH}' not found. Please place it in the same directory as the script.")
+        return #stop the execution
 
-    # Specify the local path to the GMP PDF
-    pdf_file_path = "gmpc.pdf"  # Use the correct path to the gmp.pdf file here
+    user_question = st.text_input("Ask a question:")
 
-    if os.path.exists(pdf_file_path):
-        with st.spinner("Processing GMP PDF and initializing the conversation..."):
+    if st.session_state.conversation and user_question:
+        with st.spinner("Thinking..."):
             try:
-                # Extract text from the PDF
-                raw_text = extract_text_from_pdf(pdf_file_path)
-                if raw_text:
-                    st.success(f"Successfully extracted {len(raw_text)} characters from the PDF.")
-                    # Split the extracted text into chunks based on specified size
-                    text_chunks = split_text_into_chunks(raw_text)  # Split the text into chunks
-                    # Generate embeddings for the text chunks
-                    embeddings = generate_embeddings_for_chunks(text_chunks)
-                    # Initialize Pinecone vector store and upload embeddings
-                    vectorstore = initialize_pinecone_vector_store(text_chunks, embeddings)
-
-                    if vectorstore:
-                        st.success("Pinecone vector store initialized.")
-                    else:
-                        st.error("Failed to initialize Pinecone vector store.")
-
-                    # Initialize conversation if not already done
-                    if vectorstore and st.session_state.conversation is None:
-                        st.session_state.conversation = create_conversational_chain(vectorstore)
-                        st.success("Conversation chain initialized.")
-                else:
-                    st.error("No text extracted from the PDF.")
+                response = st.session_state.conversation({'question': user_question})
+                st.session_state.chat_history = response['chat_history']
+                for i, message in enumerate(st.session_state.chat_history):
+                    speaker = "You" if i % 2 == 0 else "Bot"
+                    st.markdown(f"**{speaker}:** {message.content}")
             except Exception as e:
-                st.error(f"An error occurred during processing: {e}")
-                logger.error(f"An error occurred during processing: {e}")  # Log the error
+                logger.error(f"Conversation error: {e}")
+                st.error(f"An error occurred: {e}")
 
-    if user_question:
-        handle_conversation(user_question)
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
