@@ -4,8 +4,9 @@ from langchain.prompts import PromptTemplate
 from langchain.document_loaders import PyMuPDFLoader
 from langchain.embeddings import HuggingFaceEmbeddings
 from langchain.vectorstores import Pinecone
-from langchain.schema.output_parser import StrOutputParser
-from pinecone import Pinecone as PineconeClient, ServerlessSpec  
+from langchain.chains import RetrievalQA
+from langchain.llms import HuggingFaceEndpoint
+from pinecone import Client as PineconeClient, ServerlessSpec  
 from dotenv import load_dotenv
 from langchain.text_splitter import CharacterTextSplitter
 
@@ -73,20 +74,67 @@ class Chatbot:
         # Initialize Pinecone index with documents
         self.docsearch = Pinecone.from_documents(self.docs, self.embeddings, index_name=self.index_name)
 
+        # Set up the Retrieval QA chain
+        self.rag_chain = RetrievalQA.from_chain_type(
+            llm=self.llm, 
+            chain_type="stuff", 
+            retriever=self.docsearch.as_retriever()
+        )
 
     def ask(self, question):
-        return self.rag_chain.invoke(question)                                                                                                                                   
+        return self.rag_chain.run(question)  # Use the correct method to query the chain
 
 # Streamlit UI
-st.set_page_config(page_title="GPMC BOT")
+st.set_page_config(page_title="GPMC BOT", page_icon="🤖", layout="centered")
+
+# Add custom CSS to style the chatbot interface
+st.markdown(
+    """
+    <style>
+    .chat-message {
+        padding: 10px;
+        border-radius: 10px;
+        background-color: #f0f0f0;
+        margin-bottom: 10px;
+        font-size: 14px;
+    }
+    .user-message {
+        background-color: #d1f7c4;
+        text-align: right;
+    }
+    .assistant-message {
+        background-color: #e1e1e1;
+    }
+    .chat-container {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+        background-color: #ffffff;
+        border-radius: 8px;
+        box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+    }
+    .header {
+        font-size: 24px;
+        font-weight: bold;
+        color: #0077b6;
+        text-align: center;
+    }
+    .chatbox {
+        max-height: 500px;
+        overflow-y: auto;
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
 # Sidebar configuration
 with st.sidebar:
-    st.title("Chatbot")
+    st.title("GPMC BOT")
+    st.markdown("Ask questions related to GPMC procedures.")
+    st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/0/0e/Ahmedabad_GMC_Logo.svg/1024px-Ahmedabad_GMC_Logo.svg.png", use_column_width=True)
 
 # Initialize session_state messages if not already present
 if "messages" not in st.session_state:
-    st.session_state.messages = []  # Proper indentation for the block
+    st.session_state.messages = []
 
 # Cache the Chatbot instance
 @st.cache_resource
@@ -119,17 +167,23 @@ def generate_response(input_text):
     # Join each section with a newline and bullet point format
     return "\n\n".join(f"- {part}" for part in formatted_response)
 
-# Display chat messages
+# Display chat messages in a styled layout
+st.markdown('<div class="chat-container">', unsafe_allow_html=True)
 for message in st.session_state.messages:
-    with st.chat_message(message["role"]):
-        st.write(message["content"])
+    if message["role"] == "user":
+        with st.markdown(f'<div class="chat-message user-message">{message["content"]}</div>', unsafe_allow_html=True):
+            pass
+    else:
+        with st.markdown(f'<div class="chat-message assistant-message">{message["content"]}</div>', unsafe_allow_html=True):
+            pass
+st.markdown('</div>', unsafe_allow_html=True)
 
 # Process user input and generate response
 if input_text := st.chat_input("Type your question here..."):
     # Append user message to session state
     st.session_state.messages.append({"role": "user", "content": input_text})
-    with st.chat_message("user"):
-        st.write(input_text)
+    with st.markdown(f'<div class="chat-message user-message">{input_text}</div>', unsafe_allow_html=True):
+        pass
 
     # Generate response
     with st.chat_message("assistant"):
@@ -138,9 +192,9 @@ if input_text := st.chat_input("Type your question here..."):
 
             # Display the formatted response
             if isinstance(response, str) and len(response) > 100:
-                st.markdown(response)
+                st.markdown(f'<div class="chat-message assistant-message">{response}</div>', unsafe_allow_html=True)
             else:
-                st.write(response)
+                st.markdown(f'<div class="chat-message assistant-message">{response}</div>', unsafe_allow_html=True)
 
         # Append assistant's response to session state
         st.session_state.messages.append({"role": "assistant", "content": response})
