@@ -36,6 +36,10 @@ except Exception as e:
     except Exception as create_error:
         st.error(f"Failed to create index: {create_error}")
         st.stop()
+        
+lm_repo_id = "google/flan-t5-xl" 
+llm = HuggingFaceHub(repo_id=llm_repo_id, model_kwargs={"temperature":0.5, "max_length":512}, huggingfacehub_api_token=HUGGINGFACE_API_TOKEN)
+
 
 st.title("Chatbot")
 pdf_path = "gpmc.pdf"
