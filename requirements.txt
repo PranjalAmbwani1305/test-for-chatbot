@@ -7,4 +7,4 @@ torch
 transformers
 sentence-transformers
 langchain-huggingface
-langchain-schema
+
