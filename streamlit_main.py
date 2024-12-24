@@ -13,7 +13,7 @@ from langchain.llms import HuggingFaceHub
 # Load environment variables
 load_dotenv()
 
-s.environ['HUGGINGFACE_API_KEY'] = st.secrets["HUGGINGFACE_API_KEY"]
+os.environ['HUGGINGFACE_API_KEY'] = st.secrets["HUGGINGFACE_API_KEY"]
 os.environ['PINECONE_API_KEY'] = st.secrets["PINECONE_API_KEY"]
 
 class PDFLoader:
