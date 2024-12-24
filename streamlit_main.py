@@ -2,12 +2,12 @@ import os
 from dotenv import load_dotenv
 import streamlit as st
 from PyPDF2 import PdfReader
-from transformers import AutoTokenizer, AutoModel
 import pinecone
 from langchain.embeddings.huggingface import HuggingFaceEmbeddings
 from langchain.vectorstores import Pinecone
 from langchain.chains import RetrievalQA
 from langchain.llms import HuggingFaceHub
+from langchain.prompts import PromptTemplate
 
 load_dotenv()
 
@@ -15,18 +15,16 @@ PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
 PINECONE_ENV = os.getenv("PINECONE_ENV")
 PINECONE_INDEX_NAME = os.getenv("PINECONE_INDEX_NAME")
 HUGGINGFACE_API_TOKEN = os.getenv("HUGGINGFACE_API_TOKEN")
+HUGGINGFACE_REPO_ID = os.getenv("HUGGINGFACE_REPO_ID") # Add this line
 
 pinecone.init(api_key=PINECONE_API_KEY, environment=PINECONE_ENV)
-
-
 embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2", api_key=HUGGINGFACE_API_TOKEN)
 
 try:
     doc_store = Pinecone.from_existing_index(index_name=PINECONE_INDEX_NAME, embedding=embeddings)
-    print("Pinecone connection successful!")
+    st.success("Document store loaded from existing index!")
 except Exception as e:
-    print(f"Pinecone connection failed: {e}")
-    
+    st.error(f"Failed to load existing index: {e}")
     try:
         pinecone.create_index(
             name=PINECONE_INDEX_NAME,
@@ -34,16 +32,14 @@ except Exception as e:
             metric="cosine"
         )
         st.success(f"Index '{PINECONE_INDEX_NAME}' created successfully!")
-        # Instantiate AFTER creating the index
         doc_store = Pinecone.from_existing_index(index_name=PINECONE_INDEX_NAME, embedding=embeddings)
         st.info("Document store initialized after index creation.")
-
     except Exception as create_error:
         st.error(f"Failed to create index: {create_error}")
-        st.stop()  # Stop execution if index creation fails
+        st.stop()
 
 st.title("Chatbot")
-pdf_path = "gpmc.pdf"  # Make sure this path is correct
+pdf_path = "gpmc.pdf"
 try:
     pdf_reader = PdfReader(pdf_path)
     pdf_text = ""
@@ -56,9 +52,9 @@ except FileNotFoundError:
 chunk_size = 500
 text_chunks = [pdf_text[i : i + chunk_size] for i in range(0, len(pdf_text), chunk_size)]
 
-if doc_store is not None: # Check if doc_store is initialized
+if doc_store is not None:
     with st.spinner("Indexing document..."):
-        batch_size = 32 # Add batching for efficiency
+        batch_size = 32
         for i in range(0, len(text_chunks), batch_size):
             i_end = min(i + batch_size, len(text_chunks))
             batch = text_chunks[i:i_end]
@@ -69,14 +65,29 @@ if doc_store is not None: # Check if doc_store is initialized
             doc_store.upsert(vectors=vectors)
     st.success("Document indexed successfully!")
 
-    query = st.text_input("Enter your query:")  # Use st.text_input for user input
-    if query: # Only execute if query is not empty
-        try:
-            results = doc_store.similarity_search(query, k=5)
-            st.write(f"Search results: {results}")
+    # Prompt Template
+    template = """Use the following pieces of context to answer the question at the end. If you don't know the answer, just say that you don't know, don't try to make up an answer.
 
-            st.success("Query executed successfully!")
-        except Exception as query_error:
-            st.error(f"Failed to execute query: {query_error}")
+    {context}
+
+    Question: {question}
+    Helpful Answer:"""
+    QA_PROMPT = PromptTemplate(template=template, input_variables=["context", "question"])
+
+    llm = HuggingFaceHub(repo_id=HUGGINGFACE_REPO_ID, model_kwargs={"temperature":0.5, "max_length":512},huggingfacehub_api_token=HUGGINGFACE_API_TOKEN)
+
+    qa = RetrievalQA.from_chain_type(llm=llm, chain_type="stuff", retriever=doc_store.as_retriever(), return_source_documents=True, chain_type_kwargs={"prompt": QA_PROMPT})
+
+    query = st.text_input("Enter your query:")
+    if query:
+        with st.spinner("Generating response..."):
+            try:
+                result = qa({"query": query})
+                st.write("Answer:", result["result"])
+                with st.expander("Source Documents"):
+                    st.write(result["source_documents"])
+                st.success("Query executed successfully!")
+            except Exception as query_error:
+                st.error(f"Failed to execute query: {query_error}")
 else:
     st.error("Document store could not be initialized. Check previous errors.")
