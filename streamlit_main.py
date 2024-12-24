@@ -58,9 +58,7 @@ class Chatbot:
 
         # Define the updated prompt template
         template = """
-        You are a chatbot for the Ahmedabad Government. Corporation workers will ask questions regarding the procedures in the GPMC act. 
-        Answer these questions and give answers to process in a step by step process.
-        If you don't know the answer, respond with: "I don't know."
+        "I don't know."
 
         Context: {context}
         Question: {question}
