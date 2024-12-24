@@ -26,20 +26,18 @@ embeddings = HuggingFaceEmbeddings(model_name=model_name)
 doc_store = Pinecone(index_name, embeddings.embed_query, "text")
 
 st.title("PDF Query Chatbot")
-st.sidebar.header("Upload PDF")
 
-uploaded_file = st.sidebar.file_uploader("Upload your PDF file", type=["pdf"])
-if uploaded_file:
-    pdf_reader = PdfReader(uploaded_file)
-    pdf_text = ""
-    for page in pdf_reader.pages:
-        pdf_text += page.extract_text()
+pdf_path = "your_pdf_file.pdf"  # Path to the PDF file
+pdf_reader = PdfReader(pdf_path)
+pdf_text = ""
+for page in pdf_reader.pages:
+    pdf_text += page.extract_text()
 
-    chunk_size = 500
-    text_chunks = [pdf_text[i : i + chunk_size] for i in range(0, len(pdf_text), chunk_size)]
+chunk_size = 500
+text_chunks = [pdf_text[i : i + chunk_size] for i in range(0, len(pdf_text), chunk_size)]
 
-    with st.spinner("Indexing document..."):
-        for chunk in text_chunks:
-            doc_store.add_texts([chunk])
+with st.spinner("Indexing document..."):
+    for chunk in text_chunks:
+        doc_store.add_texts([chunk])
 
-    st.success("Document indexed successfully!")
+st.success("Document indexed successfully!")
