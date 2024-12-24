@@ -8,7 +8,6 @@ from langchain.vectorstores import Pinecone
 from langchain.memory import ConversationBufferMemory
 from langchain.chains import ConversationalRetrievalChain
 from langchain.llms import HuggingFaceHub
-import time
 import logging
 
 # Load environment variables
@@ -59,11 +58,11 @@ def initialize_pinecone_vector_store(text_chunks, embeddings):
         logger.error(f"An error occurred while initializing Pinecone: {e}")
         return None
 
-def load_pdf_and_process(file):
+def load_pdf_and_process(file_path):
     """
     Load a PDF file and process it into text chunks.
     """
-    loader = PyMuPDFLoader(file)
+    loader = PyMuPDFLoader(file_path)
     documents = loader.load()
     text_chunks = [doc.page_content for doc in documents]
     return text_chunks
@@ -71,11 +70,12 @@ def load_pdf_and_process(file):
 def main():
     st.title("Chatbot")
 
-    uploaded_file = st.file_uploader("Upload a PDF file", type="pdf")
+    # Load the specific PDF file
+    pdf_file_path = "gmpc.pdf"  # Ensure this file is in the same directory as your script
 
-    if uploaded_file is not None:
+    if os.path.exists(pdf_file_path):
         # Load and process the PDF
-        text_chunks = load_pdf_and_process(uploaded_file)
+        text_chunks = load_pdf_and_process(pdf_file_path)
         embeddings = generate_embeddings_for_chunks(text_chunks)
 
         # Initialize Pinecone and upload embeddings
@@ -99,6 +99,10 @@ def main():
             if user_input:
                 response = conversational_chain({"question": user_input})
                 st.write(response['answer'])
+        else:
+            st.error("Failed to initialize Pinecone vector store.")
+    else:
+        st.error(f"The file {pdf_file_path} does not exist. Please ensure it is in the same directory.")
 
 if __name__ == "__main__":
     main()
