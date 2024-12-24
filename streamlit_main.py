@@ -30,7 +30,7 @@ def initialize_pinecone_vector_store(text_chunks, embeddings):
     """
     Initialize the Pinecone vector store and upload embeddings.
     """
-    index_name = "chatbot"
+    index_name = "gpmc_chatbot"
     pinecone_api_key = os.getenv("PINECONE_API_KEY")
     pinecone_environment = os.getenv("PINECONE_ENV")
 
@@ -70,7 +70,7 @@ def load_pdf_and_process(file_path):
     return text_chunks
 
 def main():
-    st.title("PDF Embedding and Retrieval Chatbot")
+    st.title("GPMC PDF Query Chatbot")
 
     # Load the specific PDF file
     pdf_file_path = "gpmc.pdf"  # Ensure this file is in the same directory as your script
@@ -97,7 +97,7 @@ def main():
                 memory=memory
             )
 
-            user_input = st.text_input("Ask a question:")
+            user_input = st.text_input("Ask a question about the GPMC Act:")
             if user_input:
                 response = conversational_chain({"question": user_input})
                 st.write(response['answer'])
