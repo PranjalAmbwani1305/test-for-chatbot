@@ -14,7 +14,7 @@ from langchain.llms import HuggingFaceHub
 # Load environment variables
 load_dotenv()
 
-# Initialize Pinecone client
+def self:
 self.pc = PineconeClient(api_key=os.getenv('PINECONE_API_KEY')) 
         # Create Pinecone index if it doesn't exist
         if self.index_name not in self.pc.list_indexes().names():
