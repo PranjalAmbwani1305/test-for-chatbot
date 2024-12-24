@@ -8,6 +8,7 @@ from langchain.vectorstores import Pinecone
 from langchain.memory import ConversationBufferMemory
 from langchain.chains import ConversationalRetrievalChain
 from langchain.llms import HuggingFaceHub
+import time
 
 # Load environment variables
 load_dotenv()
@@ -53,32 +54,42 @@ def create_conversational_chain(vectorstore):
 
 def handle_conversation(user_question):
     """
-    Handle user queries using the conversational chain.
+    Handle user queries using the conversational chain and simulate a bot response.
     """
-    try:
-        response = st.session_state.conversation({'question': user_question})
-        st.session_state.chat_history = response['chat_history']
+    if st.session_state.conversation:
+        try:
+            with st.spinner("Bot is typing..."):
+                time.sleep(2)  # Simulate typing time
+            response = st.session_state.conversation({'question': user_question})
+            st.session_state.chat_history = response['chat_history']
 
-        for i, message in enumerate(st.session_state.chat_history):
-            if i % 2 == 0:
-                st.write(f"**User**: {message.content}")
-            else:
-                st.write(f"**Bot**: {message.content}")
-    except Exception as e:
-        st.error(f"An error occurred while handling the conversation: {e}")
+            # Show the conversation history
+            for i, message in enumerate(st.session_state.chat_history):
+                if i % 2 == 0:  # User's message
+                    st.write(f"**You**: {message.content}")
+                else:  # Bot's message
+                    st.write(f"**Bot**: {message.content}")
+        except Exception as e:
+            st.error(f"An error occurred during conversation handling: {e}")
+    else:
+        st.warning("The conversation has not been initialized yet. Please upload a document first.")
 
 def extract_text_from_pdf(pdf_file_path):
     """
     Extract text from the given PDF file using PyMuPDF.
     """
-    loader = PyMuPDFLoader(pdf_file_path)
-    return loader.load()
+    try:
+        loader = PyMuPDFLoader(pdf_file_path)
+        return loader.load()
+    except Exception as e:
+        st.error(f"Failed to extract text from PDF: {e}")
+        return ""
 
 def main():
     """
     Main function to initialize and run the chatbot application.
     """
-    st.set_page_config(page_title="Chat with GMP PDF", page_icon="📚")
+    st.set_page_config(page_title="Chat")
 
     if "conversation" not in st.session_state:
         st.session_state.conversation = None
@@ -88,18 +99,21 @@ def main():
     st.title("Chatbot")
     user_question = st.text_input("Ask a question about the document:")
 
-    # Specify the local PDF file path
-    pdf_file_path = "gmpc.pdf"  # Make sure the file is in the same directory or specify the full path
+    pdf_file_path = "gmpc.pdf"  # Specify the local PDF file path
 
     if os.path.exists(pdf_file_path):
         with st.spinner("Processing GMP PDF and initializing the conversation..."):
-            raw_text = extract_text_from_pdf(pdf_file_path)
-            text_chunks = raw_text.split("\n")  
-            embeddings = generate_embeddings_for_chunks(text_chunks)
-            vectorstore = initialize_pinecone_vector_store(text_chunks, embeddings)
-            
-            if vectorstore and st.session_state.conversation is None:
-                st.session_state.conversation = create_conversational_chain(vectorstore)
+            try:
+                raw_text = extract_text_from_pdf(pdf_file_path)
+                if raw_text:
+                    text_chunks = raw_text.split("\n")  # Split into chunks based on newlines
+                    embeddings = generate_embeddings_for_chunks(text_chunks)
+                    vectorstore = initialize_pinecone_vector_store(text_chunks, embeddings)
+
+                    if vectorstore and st.session_state.conversation is None:
+                        st.session_state.conversation = create_conversational_chain(vectorstore)
+            except Exception as e:
+                st.error(f"An error occurred during processing: {e}")
 
     if user_question:
         handle_conversation(user_question)
