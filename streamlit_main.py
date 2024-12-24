@@ -4,13 +4,15 @@ from langchain.prompts import PromptTemplate
 from langchain.document_loaders import PyMuPDFLoader
 from langchain.embeddings import HuggingFaceEmbeddings
 from langchain.vectorstores import Pinecone
+from langchain.schema import RunnablePassthrough
+from langchain.schema.output_parser import StrOutputParser
 from pinecone import Pinecone as PineconeClient, ServerlessSpec  
 from dotenv import load_dotenv
 from huggingface_hub import login
 from langchain.text_splitter import CharacterTextSplitter
 
 # Log in to Hugging Face
-login(token='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')
+login(token='YOUR_HUGGINGFACE_TOKEN')
 
 # Load environment variables
 load_dotenv()
@@ -60,9 +62,7 @@ class Chatbot:
 
         # Define the prompt template
         template = """
-        You are a chatbot for the Ahmedabad Government. Corporation workers will ask questions regarding the procedures in the GPMC act. 
-        Answer these questions and give answers to process in a step by step process.
-        If you don't know the answer, just say you don't know. 
+        you don't know. 
 
         Context: {context}
         Question: {question}
@@ -86,6 +86,10 @@ st.set_page_config(page_title="GPMC BOT")
 # Sidebar configuration
 with st.sidebar:
     st.title("Chatbot")
+
+# Initialize session_state messages if not already present
+if "messages" not in st.session_state:
+    st.session_state.messages = []
 
 # Cache the Chatbot instance
 @st.cache_resource
@@ -137,9 +141,4 @@ if input_text := st.chat_input("Type your question here..."):
 
             # Display the formatted response
             if isinstance(response, str) and len(response) > 100:
-                st.markdown(response)
-            else:
-                st.write(response)
-
-        # Append assistant's response to session state
-        st.session_state.messages.append({"role": "assistant", "content": response})
+           
