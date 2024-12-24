@@ -80,8 +80,11 @@ class Chatbot:
         # Get the context from the relevant documents
         context = "\n".join([doc.page_content for doc in relevant_docs])  # Use 'page_content' to get the text
         
+        # Combine context with the question to create a prompt
+        prompt = f"Context: {context}\nQuestion: {question}\nAnswer:"
+        
         # Generate the answer using the Hugging Face model
-        response = llm(context=context, question=question)  # Correct method here
+        response = llm(prompt=prompt)  # Pass the 'prompt' as required by HuggingFaceEndpoint
         return response
 
 # Set up the Streamlit UI
