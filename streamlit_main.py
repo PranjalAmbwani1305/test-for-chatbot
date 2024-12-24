@@ -13,6 +13,7 @@ load_dotenv()
 PINECONE_API_KEY = os.environ.get("PINECONE_API_KEY")
 PDF_FILE_PATH = './your_document.pdf'  # Replace with your PDF file path
 
+# Check if the API key is set
 if not PINECONE_API_KEY:
     st.error("Pinecone API key is not set. Please check your .env file.")
     st.stop()
@@ -38,6 +39,7 @@ try:
                 region='us-west-2'  # Specify your region
             )
         )
+        st.success(f"Index '{index_name}' created successfully.")
     else:
         st.write(f"Index '{index_name}' already exists.")
 
@@ -58,8 +60,12 @@ text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=10
 texts = text_splitter.split_documents(documents)
 
 # Create embeddings and store in Pinecone
-embeddings = HuggingFaceEmbeddings(model_name='all-MiniLM-L6-v2')
-vectordb = LangchainPinecone.from_documents(texts, embeddings, index_name=index_name)
+try:
+    embeddings = HuggingFaceEmbeddings(model_name='all-MiniLM-L6-v2')
+    vectordb = LangchainPinecone.from_documents(texts, embeddings, index_name=index_name)
+except Exception as e:
+    st.error(f"Error creating embeddings or storing in Pinecone: {e}")
+    st.stop()
 
 # Set up the Streamlit app
 st.title("PDF Chatbot")
@@ -68,10 +74,13 @@ user_input = st.text_input("Ask a question about the PDF:")
 if user_input:
     with st.spinner("Searching for an answer..."):
         # Create a conversational retrieval chain
-        qa_chain = ConversationalRetrievalChain.from_llm(
-            llm=embeddings,
-            retriever=vectordb.as_retriever(search_kwargs={'k': 2}),
-            return_source_documents=True
-        )
-        response = qa_chain({'question': user_input})
-        st.write("Response:", response['answer'])
+        try:
+            qa_chain = ConversationalRetrievalChain.from_llm(
+                llm=embeddings,
+                retriever=vectordb.as_retriever(search_kwargs={'k': 2}),
+                return_source_documents=True
+            )
+            response = qa_chain({'question': user_input})
+            st.write("Response:", response['answer'])
+        except Exception as e:
+            st.error(f"Error during query processing: {e}")
