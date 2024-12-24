@@ -38,8 +38,6 @@ except Exception as e:
 try:
     pc = PineconeClient(api_key=PINECONE_API_KEY)
     print("Pinecone client initialized.")
-except Exception as e:
-    raise ValueError(f"Pinecone client initialization failed: {str(e)}")
 
 # Create Pinecone index if it doesn't exist
 index_name = PINECONE_INDEX_NAME or "textembedding"  # Default to 'textembedding' if not provided
