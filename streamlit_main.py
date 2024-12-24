@@ -1,14 +1,13 @@
 import os
 from dotenv import load_dotenv
 import streamlit as st
-from PyPDF2 import PdfReader
 from huggingface_hub import login
 from langchain.vectorstores import Pinecone  
-from pinecone import Pinecone as PineconeClient, ServerlessSpec  
 from langchain.embeddings import HuggingFaceEmbeddings
 from langchain.text_splitter import CharacterTextSplitter
 from langchain_community.document_loaders import PyMuPDFLoader
 from langchain.llms import HuggingFaceEndpoint
+from pinecone import Pinecone as PineconeClient, ServerlessSpec  
 
 # Load environment variables
 load_dotenv()
@@ -31,7 +30,7 @@ pc = PineconeClient(api_key=PINECONE_API_KEY)
 if index_name not in pc.list_indexes().names():
     pc.create_index(
         name=index_name,
-        dimension= 384,  # dimension of sentence embeddings
+        dimension=384,  # dimension of sentence embeddings
         metric='cosine',
         spec=ServerlessSpec(
             cloud='aws', 
@@ -69,7 +68,7 @@ class Chatbot:
     def ask(self, question):
         # Retrieve relevant document chunks
         retriever = docsearch.as_retriever()
-        relevant_docs = retriever.retrieve(question)
+        relevant_docs = retriever.get_relevant_documents(question)  # Correct method here
         
         # Get the context from the relevant documents
         context = "\n".join([doc['text'] for doc in relevant_docs])
@@ -79,7 +78,7 @@ class Chatbot:
         return response
 
 # Set up the Streamlit UI
-st.title(" Chatbot")
+st.title("Chatbot")
 
 # Get user input for the query
 query = st.text_input("Enter your query:")
