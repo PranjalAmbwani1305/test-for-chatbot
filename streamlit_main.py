@@ -2,11 +2,14 @@ import os
 import streamlit as st
 import pinecone
 from dotenv import load_dotenv
-from langchain_community.document_loaders import PyMuPDFLoader
-from langchain.embeddings import HuggingFaceInstructEmbeddings
-from langchain.vectorstores import Pinecone
+from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_huggingface import HuggingFaceEndpoint
+from langchain.text_splitter import CharacterTextSplitter
+from langchain_community.vectorstores import Pinecone
+from pinecone import Pinecone as PineconeClient, ServerlessSpec  
 from langchain.memory import ConversationBufferMemory
 from langchain.chains import ConversationalRetrievalChain
+from langchain_community.document_loaders import PyMuPDFLoader  
 from langchain.llms import HuggingFaceHub
 import logging
 
