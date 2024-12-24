@@ -21,7 +21,7 @@ model_name = "sentence-transformers/all-MiniLM-L6-v2"
 embeddings = HuggingFaceEmbeddings()
 
 try:
-    doc_store = Pinecone.from_existing_index(
+    doc_store = Pinecone(
         index_name=PINECONE_INDEX_NAME,  
         embedding_function=embeddings.embed_query 
     )
