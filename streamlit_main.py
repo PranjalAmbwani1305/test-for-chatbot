@@ -3,7 +3,8 @@ from dotenv import load_dotenv
 import streamlit as st
 from PyPDF2 import PdfReader
 from huggingface_hub import login
-from langchain.vectorstores import Pinecone as PineconeClient, ServerlessSpec
+from langchain.vectorstores import Pinecone  
+from pinecone import Pinecone as PineconeClient, ServerlessSpec  
 from langchain.embeddings import HuggingFaceEmbeddings
 from langchain.text_splitter import CharacterTextSplitter
 from langchain_community.document_loaders import PyMuPDFLoader
