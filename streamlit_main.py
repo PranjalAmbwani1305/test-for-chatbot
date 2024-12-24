@@ -55,14 +55,17 @@ def handle_conversation(user_question):
     """
     Handle user queries using the conversational chain.
     """
-    response = st.session_state.conversation({'question': user_question})
-    st.session_state.chat_history = response['chat_history']
+    try:
+        response = st.session_state.conversation({'question': user_question})
+        st.session_state.chat_history = response['chat_history']
 
-    for i, message in enumerate(st.session_state.chat_history):
-        if i % 2 == 0:
-            st.write(f"**User**: {message.content}")
-        else:
-            st.write(f"**Bot**: {message.content}")
+        for i, message in enumerate(st.session_state.chat_history):
+            if i % 2 == 0:
+                st.write(f"**User**: {message.content}")
+            else:
+                st.write(f"**Bot**: {message.content}")
+    except Exception as e:
+        st.error(f"An error occurred while handling the conversation: {e}")
 
 def extract_text_from_pdf(pdf_file_path):
     """
@@ -82,16 +85,16 @@ def main():
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = []
 
-    st.title("Chatbot with GMP PDF Document Integration")
+    st.title("Chatbot")
     user_question = st.text_input("Ask a question about the document:")
 
     # Specify the local PDF file path
-    pdf_file_path = "gmpc.pdf" 
+    pdf_file_path = "gmpc.pdf"  # Make sure the file is in the same directory or specify the full path
 
     if os.path.exists(pdf_file_path):
         with st.spinner("Processing GMP PDF and initializing the conversation..."):
             raw_text = extract_text_from_pdf(pdf_file_path)
-            text_chunks = raw_text.split("\n")  # Split into chunks based on newlines
+            text_chunks = raw_text.split("\n")  
             embeddings = generate_embeddings_for_chunks(text_chunks)
             vectorstore = initialize_pinecone_vector_store(text_chunks, embeddings)
             
