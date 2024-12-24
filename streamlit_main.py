@@ -1,6 +1,8 @@
 import streamlit as st
 from langchain.document_loaders import PyPDFLoader
 from langchain.embeddings import HuggingFaceEmbeddings
+from sentence_transformers import SentenceTransformer
+from pinecone import Pinecone as PineconeClient
 from langchain.vectorstores import Pinecone
 from langchain.chains import RetrievalQA
 from langchain.chat_models import ChatOpenAI
