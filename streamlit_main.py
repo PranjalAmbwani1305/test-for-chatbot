@@ -17,8 +17,6 @@ PINECONE_ENV = os.getenv("PINECONE_ENV")
 PINECONE_INDEX_NAME = os.getenv("PINECONE_INDEX_NAME")
 HUGGINGFACE_API_TOKEN = os.getenv("HUGGINGFACE_API_TOKEN")
 
-embeddings = HuggingFaceEmbeddings(model_name="google/flan-t5-xl", api_key=HUGGINGFACE_API_TOKEN)
-
 try:
     doc_store = Pinecone.from_existing_index(index_name=PINECONE_INDEX_NAME, embedding=embeddings)
     st.success("Document store loaded from existing index!")
