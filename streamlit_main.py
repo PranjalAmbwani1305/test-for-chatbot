@@ -19,7 +19,7 @@ load_dotenv()
 # Initialize Pinecone with API key and environment from .env file
 pinecone_api_key = os.getenv("PINECONE_API_KEY")
 pinecone_env = os.getenv("PINECONE_ENV")
-pinecone.init(api_key=pinecone_api_key, environment=pinecone_env)
+
 
 # Create or connect to an existing Pinecone index
 index_name = "fashion-documents"  # You can choose a custom name for your index
