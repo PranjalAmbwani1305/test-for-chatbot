@@ -39,11 +39,12 @@ try:
         doc_store = LangchainPinecone.from_existing_index(index_name=PINECONE_INDEX_NAME, embedding=embeddings)
     else:
         pc.create_index(
-            name=PINECONE_INDEX_NAME,
-            dimension=embeddings.embed_query("Sample").__len__(),
-            metric="cosine",
-            spec=ServerlessSpec(cloud='aws', region='us-west-2')
-        )
+    name=PINECONE_INDEX_NAME,
+    dimension=embeddings.embed_query("Sample").__len__(),
+    metric="cosine",
+    spec=ServerlessSpec(cloud='aws', region='us-east-1')  # Change region to us-east-1
+)
+
         st.success(f"Index '{PINECONE_INDEX_NAME}' created successfully!")
         index = pc.index(PINECONE_INDEX_NAME)
         doc_store = LangchainPinecone.from_existing_index(index_name=PINECONE_INDEX_NAME, embedding=embeddings)
