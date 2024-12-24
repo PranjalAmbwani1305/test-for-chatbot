@@ -20,8 +20,6 @@ HUGGINGFACE_API_TOKEN = os.getenv("HUGGINGFACE_API_TOKEN")
 model_name = "sentence-transformers/all-MiniLM-L6-v2"
 embeddings = HuggingFaceEmbeddings()
 
-pinecone.create_index("textembedding", dimension=384)
-
 try:
     doc_store = Pinecone.from_existing_index(
         index_name=PINECONE_INDEX_NAME,  
