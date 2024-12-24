@@ -8,6 +8,7 @@ from langchain.vectorstores import Pinecone as LangchainPinecone
 from langchain.chains import RetrievalQA
 from langchain.llms import HuggingFaceHub
 from langchain.prompts import PromptTemplate
+from huggingface_hub import login
 
 load_dotenv()
 
@@ -17,33 +18,31 @@ PINECONE_INDEX_NAME = os.getenv("PINECONE_INDEX_NAME")
 HUGGINGFACE_API_TOKEN = os.getenv("HUGGINGFACE_API_TOKEN")
 HUGGINGFACE_REPO_ID = os.getenv("HUGGINGFACE_REPO_ID")
 
-# Initialize Pinecone instance
+login(HUGGINGFACE_API_TOKEN)
+
 try:
     pc = Pinecone(api_key=PINECONE_API_KEY)
 except Exception as e:
     st.error(f"Error initializing Pinecone: {e}")
     st.stop()
 
-# Initialize embeddings (outside the try block)
 try:
-    embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2", huggingfacehub_api_token=HUGGINGFACE_API_TOKEN)
+    embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
 except Exception as e:
     st.error(f"Error initializing embeddings: {e}")
-    st.stop()  # Stop execution if embeddings fail
+    st.stop()
 
-# Check if the index exists or create it
 try:
     index_exists = PINECONE_INDEX_NAME in pc.list_indexes().names()
     if index_exists:
         doc_store = LangchainPinecone.from_existing_index(index_name=PINECONE_INDEX_NAME, embedding=embeddings)
         st.success("Document store loaded from existing index!")
     else:
-        # Create the index if it doesn't exist
         pc.create_index(
             name=PINECONE_INDEX_NAME,
             dimension=embeddings.embed_query("Sample").__len__(),
             metric="cosine",
-            spec=ServerlessSpec(cloud='aws', region='us-west-2')  # Modify this as needed
+            spec=ServerlessSpec(cloud='aws', region='us-west-2')
         )
         st.success(f"Index '{PINECONE_INDEX_NAME}' created successfully!")
         doc_store = LangchainPinecone.from_existing_index(index_name=PINECONE_INDEX_NAME, embedding=embeddings)
@@ -82,7 +81,6 @@ if doc_store is not None:
             doc_store.upsert(vectors=vectors)
         st.success("Document indexed successfully!")
 
-    # Prompt Template
     template = """Use the following pieces of context to answer the question at the end. If you don't know the answer, just say that you don't know, don't try to make up an answer.
 
     {context}
