@@ -20,8 +20,11 @@ HUGGINGFACE_API_TOKEN = os.getenv("HUGGINGFACE_API_TOKEN")
 model_name = "sentence-transformers/all-MiniLM-L6-v2"
 embeddings = HuggingFaceEmbeddings()
 
-doc_store = Pinecone(index_name, embeddings.embed_query, "text")
-
+ddoc_store = Pinecone(
+    index_name="textembedding",        
+    embedding_function=embeddings.embed_query,  
+    text_field="text"                  
+)
 st.title("Chatbot")
 
 pdf_path = "gpmc.pdf"
