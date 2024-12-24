@@ -15,14 +15,6 @@ from langchain.llms import HuggingFaceHub
 load_dotenv()
 
 
-
-def split_text_into_chunks(text, chunk_size=1000, overlap=200):
-    """
-    Split text into manageable chunks for embedding.
-    """
-    splitter = CharacterTextSplitter(separator="\n", chunk_size=chunk_size, chunk_overlap=overlap)
-    return splitter.split_text(text)
-
 def generate_embeddings_for_chunks(text_chunks):
     """
     Generate embeddings for each chunk of text using HuggingFace model.
