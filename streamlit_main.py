@@ -1,6 +1,6 @@
 import os
 import streamlit as st
-from pinecone import Pinecone
+import pinecone
 from langchain.document_loaders import PyPDFLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.embeddings import HuggingFaceEmbeddings
@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 # Load environment variables from .env file
 load_dotenv()
 PINECONE_API_KEY = os.environ.get("PINECONE_API_KEY")
-PDF_FILE_PATH = 'gpmc.pdf'  # Replace with your PDF file path
+PDF_FILE_PATH = 'gpmc.pdf' 
 
 if not PINECONE_API_KEY:
     st.error("Pinecone API key is not set. Please check your .env file.")
@@ -19,17 +19,17 @@ if not PINECONE_API_KEY:
 
 # Initialize Pinecone
 try:
-    pc = Pinecone(api_key=PINECONE_API_KEY)
+    pinecone.init(api_key=PINECONE_API_KEY, environment="us-west1-gcp") 
     index_name = "pdf-chatbot-index"
 
     # List existing indexes
-    existing_indexes = pc.list_indexes()
+    existing_indexes = pinecone.list_indexes()
     st.write("Existing indexes:", existing_indexes)
 
     # Create or reset the Pinecone index
     if index_name in existing_indexes:
-        pc.delete_index(index_name)
-    pc.create_index(name=index_name, dimension=768, metric="cosine")
+        pinecone.delete_index(index_name)
+    pinecone.create_index(name=index_name, dimension=768, metric="cosine")
 
 except Exception as e:
     st.error(f"Error initializing Pinecone: {e}")
