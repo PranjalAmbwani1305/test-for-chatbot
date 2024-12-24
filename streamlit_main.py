@@ -21,22 +21,17 @@ HUGGINGFACE_REPO_ID = os.getenv("HUGGINGFACE_REPO_ID")
 login(HUGGINGFACE_API_TOKEN)
 
 
-try:
-    embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
-except Exception as e:
-    st.error(f"Error initializing embeddings: {e}")
-    st.stop()
 
 pc = PineconeClient(api_key=os.getenv('PINECONE_API_KEY')) 
         # Create Pinecone index if it doesn't exist
-        if index_name not in pc.list_indexes().names():
-            pc.create_index(
-                name=self.index_name,
-                dimension=346,  
-                metric='cosine',
-                spec=ServerlessSpec(
-                    cloud='aws', 
-                    region='us-east-1'  
+if index_name not in pc.list_indexes().names():
+    pc.create_index(
+        name=self.index_name,
+        dimension=346,  
+        metric='cosine',
+        spec=ServerlessSpec(
+            cloud='aws', 
+            region='us-east-1'  
                 )
             )
 
