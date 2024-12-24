@@ -13,8 +13,6 @@ import time
 # Load environment variables
 load_dotenv()
 
-pdf_file_path = "gmpc.pdf"  
-
 def generate_embeddings_for_chunks(text_chunks):
     """
     Generate embeddings for each chunk of text using HuggingFace model.
@@ -33,14 +31,18 @@ def initialize_pinecone_vector_store(text_chunks, embeddings):
     pinecone.init(api_key=pinecone_api_key, environment=pinecone_environment)
     pinecone_client = pinecone
 
-    if index_name not in pinecone_client.list_indexes():
-        pinecone_client.create_index(index_name, dimension=len(embeddings[0]))
+    try:
+        if index_name not in pinecone_client.list_indexes():
+            pinecone_client.create_index(index_name, dimension=len(embeddings[0]))
 
-    pinecone_index = pinecone_client.Index(index_name)
-    ids = [str(i) for i in range(len(text_chunks))]
-    pinecone_index.upsert(vectors=zip(ids, embeddings))
+        pinecone_index = pinecone_client.Index(index_name)
+        ids = [str(i) for i in range(len(text_chunks))]
+        pinecone_index.upsert(vectors=zip(ids, embeddings))
 
-    return Pinecone(index=pinecone_index, embedding_function=generate_embeddings_for_chunks)
+        return Pinecone(index=pinecone_index, embedding_function=generate_embeddings_for_chunks)
+    except Exception as e:
+        st.error(f"Error initializing Pinecone vector store: {e}")
+        return None
 
 def create_conversational_chain(vectorstore):
     """
@@ -101,7 +103,8 @@ def main():
     st.title("Chatbot with GMP PDF Document Integration")
     user_question = st.text_input("Ask a question about the document:")
 
-  
+    # Specify the local path to the GMP PDF
+    pdf_file_path = "gmpc.pdf"
 
     if os.path.exists(pdf_file_path):
         with st.spinner("Processing GMP PDF and initializing the conversation..."):
@@ -109,6 +112,7 @@ def main():
                 # Extract text from the PDF
                 raw_text = extract_text_from_pdf(pdf_file_path)
                 if raw_text:
+                    st.success(f"Successfully extracted {len(raw_text)} characters from the PDF.")
                     # Split the extracted text into chunks based on newlines or other criteria
                     text_chunks = raw_text.split("\n")  # Or split differently as per your needs
                     # Generate embeddings for the text chunks
@@ -116,9 +120,17 @@ def main():
                     # Initialize Pinecone vector store and upload embeddings
                     vectorstore = initialize_pinecone_vector_store(text_chunks, embeddings)
 
+                    if vectorstore:
+                        st.success("Pinecone vector store initialized.")
+                    else:
+                        st.error("Failed to initialize Pinecone vector store.")
+
                     # Initialize conversation if not already done
                     if vectorstore and st.session_state.conversation is None:
                         st.session_state.conversation = create_conversational_chain(vectorstore)
+                        st.success("Conversation chain initialized.")
+                else:
+                    st.error("No text extracted from the PDF.")
             except Exception as e:
                 st.error(f"An error occurred during processing: {e}")
 
