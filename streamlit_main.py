@@ -6,7 +6,6 @@ from PyPDF2 import PdfReader
 from langchain.text_splitter import CharacterTextSplitter
 from langchain.embeddings import HuggingFaceInstructEmbeddings
 from langchain.vectorstores import Pinecone
-from pinecone import Pinecone as PineconeClient
 from langchain.memory import ConversationBufferMemory
 from langchain.chains import ConversationalRetrievalChain
 from langchain.llms import HuggingFaceHub
@@ -14,31 +13,11 @@ from langchain.llms import HuggingFaceHub
 # Load environment variables
 load_dotenv()
 
-os.environ['HUGGINGFACE_API_KEY'] = st.secrets["HUGGINGFACE_API_KEY"]
-os.environ['PINECONE_API_KEY'] = st.secrets["PINECONE_API_KEY"]
-
-class PDFLoader:
-    def __init__(self, pdf_file):
-
-        text_splitter = CharacterTextSplitter(chunk_size=4000, chunk_overlap=4)
-        self.docs = text_splitter.split_documents([Document(page_content=self.extracted_text)])
-
-        self.index_name = "chatbot"
-        self.pc = PineconeClient(api_key=os.getenv('PINECONE_API_KEY'))
-
-        if self.index_name not in self.pc.list_indexes().names():
-            self.pc.create_index(
-                name=self.index_name,
-                dimension=384,
-                metric='cosine',
-            )
-            st.write(f"Index '{self.index_name}' created.")
-        else:
-            st.write(f"Index '{self.index_name}' already exists.")
-
-        self.index = self.pc.Index(self.index_name)
-
-   
+# Initialize Pinecone client
+pinecone_client = pinecone.Client(
+    api_key=os.getenv("PINECONE_API_KEY"),
+    environment="us-east1-gcp"
+)
 
 def extract_text_from_pdfs(pdf_files):
     """
@@ -72,7 +51,7 @@ def initialize_pinecone_vector_store(text_chunks, embeddings):
     index_name = "chatbot"
     try:
         if index_name not in pinecone_client.list_indexes():
-            pinecone_client.create_index(index_name, dimension=len(embeddings[0]))
+            pinecone_client.create_index(name=index_name, dimension=len(embeddings[0]))
     except AttributeError as e:
         st.error(f"Error while interacting with Pinecone: {e}")
         return None
@@ -112,7 +91,7 @@ def main():
     """
     Main function to initialize and run the chatbot application.
     """
-   
+    st.set_page_config(page_title="Chat with PDFs", page_icon="📚")
 
     if "conversation" not in st.session_state:
         st.session_state.conversation = None
