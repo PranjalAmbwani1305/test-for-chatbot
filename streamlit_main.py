@@ -17,8 +17,7 @@ if not PINECONE_API_KEY:
     st.error("Pinecone API key is not set. Please check your .env file.")
     st.stop()
 
-# Initialize Pinecone
-pc = Pinecone(api_key=PINECONE_API_KEY)
+
 index_name = "pdf-chatbot-index"
 
 # Create or reset the Pinecone index
