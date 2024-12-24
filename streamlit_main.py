@@ -3,6 +3,7 @@ import streamlit as st
 import pinecone
 from dotenv import load_dotenv
 from PyPDF2 import PdfReader
+from pinecone import Pinecone as PineconeClient , ServerlessSpe
 from langchain.text_splitter import CharacterTextSplitter
 from langchain.embeddings import HuggingFaceInstructEmbeddings
 from langchain.vectorstores import Pinecone
@@ -14,10 +15,20 @@ from langchain.llms import HuggingFaceHub
 load_dotenv()
 
 # Initialize Pinecone client
-pinecone_client = pinecone.Client(
-    api_key=os.getenv("PINECONE_API_KEY"),
-    environment="us-east1-gcp"
-)
+self.pc = PineconeClient(api_key=os.getenv('PINECONE_API_KEY')) 
+        # Create Pinecone index if it doesn't exist
+        if self.index_name not in self.pc.list_indexes().names():
+            self.pc.create_index(
+                name=self.index_name,
+                dimension=384,  
+                metric='cosine',
+                spec=ServerlessSpec(
+                    cloud='aws', 
+                    region='us-east-1'  
+                )
+            )
+
+
 
 def extract_text_from_pdfs(pdf_files):
     """
