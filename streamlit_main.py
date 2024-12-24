@@ -12,8 +12,8 @@ from langchain.llms import HuggingFaceHub
 
 load_dotenv()
 
-# Initialize the Pinecone environment
-pinecone.init(api_key=os.getenv("PINECONE_API_KEY"), environment="us-east1-gcp")
+# Initialize Pinecone with the new method
+pinecone_client = pinecone.Client(api_key=os.getenv("PINECONE_API_KEY"), environment="us-east1-gcp")
 
 def extract_text_from_pdfs(pdf_paths):
     text = ""
@@ -34,17 +34,14 @@ def generate_embeddings_for_chunks(text_chunks):
 
 def initialize_pinecone_vector_store(text_chunks, embeddings):
     index_name = "chatbot"
-    
-    # Check if the Pinecone index exists, and create it if not
     try:
-        # Using the updated Pinecone client API
-        if index_name not in pinecone.list_indexes():
-            pinecone.create_index(index_name, dimension=embeddings[0].shape[0])
+        if index_name not in pinecone_client.list_indexes():
+            pinecone_client.create_index(index_name, dimension=embeddings[0].shape[0])
     except AttributeError as e:
         st.error(f"Error while interacting with Pinecone: {e}")
         return None
 
-    pinecone_index = pinecone.Index(index_name)
+    pinecone_index = pinecone_client.Index(index_name)
     ids = [str(i) for i in range(len(text_chunks))]
     pinecone_index.upsert(vectors=zip(ids, embeddings))
 
@@ -77,7 +74,7 @@ def main():
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = []
 
-    st.title("Chatbot ")
+    st.title("Chatbot with PDF Document Integration")
     user_question = st.text_input("Ask a question about the document:")
 
     pdf_paths = ["gpmc.pdf"]
@@ -95,4 +92,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
