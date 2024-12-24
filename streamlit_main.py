@@ -22,10 +22,15 @@ embeddings = HuggingFaceEmbeddings()
 
 pinecone.create_index("textembedding", dimension=384)
 
-doc_store = Pinecone.from_existing_index(
-    index_name="textembedding",  # Replace with your actual Pinecone index name
-    embedding_function=embeddings.embed_query  # Function to get the embedding
-)
+try:
+    doc_store = Pinecone.from_existing_index(
+        index_name=PINECONE_INDEX_NAME,  
+        embedding_function=embeddings.embed_query 
+    )
+    st.success("Document store created successfully!")
+except Exception as e:
+    st.error(f"Failed to create document store: {e}")
+    
 st.title("Chatbot")
 
 pdf_path = "gpmc.pdf"
