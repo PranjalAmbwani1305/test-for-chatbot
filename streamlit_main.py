@@ -1,3 +1,105 @@
+import os
+from langchain_core.prompts import PromptTemplate
+from langchain_community.document_loaders import PyMuPDFLoader
+from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_huggingface import HuggingFaceEndpoint
+from langchain.text_splitter import CharacterTextSplitter
+from langchain_community.vectorstores import Pinecone
+from langchain.schema.runnable import RunnablePassthrough
+from langchain.schema.output_parser import StrOutputParser
+from pinecone import Pinecone as PineconeClient, ServerlessSpec
+from dotenv import load_dotenv
+from huggingface_hub import login
+import streamlit as st
+
+
+load_dotenv()
+
+
+os.environ['HUGGINGFACE_API_KEY'] = st.secrets["HUGGINGFACE_API_KEY"]
+os.environ['PINECONE_API_KEY'] = st.secrets["PINECONE_API_KEY"]
+
+class Chatbot:
+    def __init__(self):
+        # Load PDF data
+        loader = PyMuPDFLoader('gpmc.pdf')
+        documents = loader.load()
+
+     
+        text_splitter = CharacterTextSplitter(chunk_size=4000, chunk_overlap=4)
+        self.docs = text_splitter.split_documents(documents)
+
+        self.embeddings = HuggingFaceEmbeddings()
+
+ 
+        self.index_name = "chatbot"
+
+     
+        self.pc = PineconeClient(api_key=os.getenv('PINECONE_API_KEY'))
+        # Create Pinecone index if it doesn't exist
+        if self.index_name not in self.pc.list_indexes().names():
+            self.pc.create_index(
+                name=self.index_name,
+                dimension=768,  # Embedding dimension
+                metric='cosine',
+                spec=ServerlessSpec(
+                    cloud='aws',
+                    region='us-east-1'
+                )
+            )
+
+        
+        repo_id = "google/flan-t5-xxl"
+        self.llm = HuggingFaceEndpoint(
+            repo_id=repo_id,
+            temperature=0.8,
+            top_k=50,
+            huggingfacehub_api_token=os.getenv('HUGGINGFACE_API_KEY')
+        )
+
+        
+        template = """
+       you don't know. 
+
+        Context: {context}
+        Question: {question}
+        Answer: 
+        """
+        self.prompt = PromptTemplate(
+            template=template,
+            input_variables=["context", "question"]
+        )
+
+        # Initialize Pinecone index with documents
+        self.docsearch = Pinecone.from_documents(self.docs, self.embeddings, index_name=self.index_name)
+
+        # Define the retrieval-augmented generation (RAG) chain
+        self.rag_chain = (
+            {"context": self.docsearch.as_retriever(), "question": RunnablePassthrough()}
+            | self.prompt
+            | self.llm
+            | StrOutputParser()
+        )
+
+    def ask(self, question):
+        return self.rag_chain.invoke(question)
+
+
+# Streamlit app for querying the chatbot
+def main():
+    chatbot = Chatbot()
+
+    st.title(" Chatbot")
+
+    user_question = st.text_input("Ask a question:")
+
+    if user_question:
+        response = chatbot.ask(user_question)
+        st.write(response)
+
+
+if __name__ == "__main__":
+    main()
 import streamlit as st
 import pinecone
 from dotenv import load_dotenv
