@@ -4,3 +4,4 @@ sentencepiece
 langchain
 langchain_community
 pinecone-client
+pinecone
