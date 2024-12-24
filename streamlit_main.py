@@ -11,10 +11,7 @@ from langchain.chains import ConversationalRetrievalChain
 from langchain.llms import HuggingFaceHub
 
 # Access the API key from Streamlit secrets
-pinecone_api_key = st.secrets["pinecone"]["api_key"]
-
-# Initialize Pinecone with the API key
-pinecone.init(api_key=pinecone_api_key, environment="us-west1-gcp")
+PINECONE_API_KEY = st.secrets["PINECONE_API_KEY"]
 
 # Function to extract text from PDFs
 def get_pdf_text(pdf_docs):
@@ -41,7 +38,7 @@ def get_vectorstore(text_chunks):
     embeddings = HuggingFaceInstructEmbeddings(model_name="hkunlp/instructor-xl")
     
     # Create Pinecone index for storing vectors
-    index_name = "pdf-chat-index"
+    index_name = "chatbot"
     
     # If the index does not exist, create it
     if index_name not in pinecone.list_indexes():
@@ -96,8 +93,8 @@ def main():
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = None
 
-    st.header("Chat with Your Predefined PDFs :books:")
-    user_question = st.text_input("Ask a question about your documents:")
+    st.header("Chatbot")
+    user_question = st.text_input("Ask a question about document")
 
     if user_question:
         handle_userinput(user_question)
@@ -106,7 +103,7 @@ def main():
     st.sidebar.subheader("Pre-loaded Documents")
 
     # List the paths of predefined PDFs
-    pdf_paths = ["./path_to_your_pdf1.pdf", "./path_to_your_pdf2.pdf"]  # Update these paths as needed
+    pdf_paths = [ "gmpc.pdf"]  # Update these paths as needed
 
     # Process the predefined PDFs
     with st.spinner("Processing pre-loaded PDFs"):
