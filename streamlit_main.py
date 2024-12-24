@@ -4,7 +4,7 @@ import streamlit as st
 from PyPDF2 import PdfReader
 from pinecone import Pinecone as PineconeClient, ServerlessSpec
 from langchain_community.embeddings import HuggingFaceEmbeddings
-from langchain.vectorstores import Pinecone as PineconeClient, ServerlessSpec
+from langchain.vectorstores import Pinecone as LangchainPinecone
 from langchain.chains import RetrievalQA
 from langchain.llms import HuggingFaceHub
 from langchain.prompts import PromptTemplate
@@ -12,29 +12,33 @@ from huggingface_hub import login
 
 load_dotenv()
 
+# Load environment variables
 PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
 PINECONE_ENV = os.getenv("PINECONE_ENV")
 PINECONE_INDEX_NAME = os.getenv("PINECONE_INDEX_NAME")
 HUGGINGFACE_API_TOKEN = os.getenv("HUGGINGFACE_API_TOKEN")
 HUGGINGFACE_REPO_ID = os.getenv("HUGGINGFACE_REPO_ID")
 
+# Login to HuggingFace Hub
 login(HUGGINGFACE_API_TOKEN)
 
+# Initialize Pinecone client
+pc = PineconeClient(api_key=PINECONE_API_KEY, environment=PINECONE_ENV)
 
-
-pc = PineconeClient(api_key=os.getenv('PINECONE_API_KEY')) 
-        # Create Pinecone index if it doesn't exist
-if index_name not in pc.list_indexes().names():
+# Create Pinecone index if it doesn't exist
+if PINECONE_INDEX_NAME not in pc.list_indexes():
     pc.create_index(
-        name=self.index_name,
-        dimension=346,  
+        name=PINECONE_INDEX_NAME,
+        dimension=346,  # Specify the correct dimension for your embeddings
         metric='cosine',
         spec=ServerlessSpec(
             cloud='aws', 
-            region='us-east-1'  
-                )
-            )
+            region='us-east-1'  # Adjust region if needed
+        )
+    )
+    st.success(f"Index '{PINECONE_INDEX_NAME}' created successfully!")
 
+# Load embeddings from HuggingFace
 try:
     embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
 except Exception as e:
@@ -61,6 +65,10 @@ except Exception as e:
 # Chunk the text into smaller parts for embedding
 chunk_size = 500
 text_chunks = [pdf_text[i:i + chunk_size] for i in range(0, len(pdf_text), chunk_size)]
+
+# Initialize document store (Pinecone vector store)
+index = pc.index(PINECONE_INDEX_NAME)  # Connect to the existing Pinecone index
+doc_store = LangchainPinecone.from_existing_index(index_name=PINECONE_INDEX_NAME, embedding=embeddings)
 
 # Index the document text into Pinecone
 if doc_store is not None:
