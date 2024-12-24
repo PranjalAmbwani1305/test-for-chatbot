@@ -55,47 +55,81 @@ try:
                 region='us-east-1'
             )
         )
+        print(f"Index {index_name} created successfully.")
+    else:
+        print(f"Index {index_name} already exists.")
+except Exception as e:
+    print(f"Error details: {str(e)}")  # Print full exception message
+    raise ValueError(f"Error creating Pinecone index: {str(e)}")
 
 # Load the PDF document
-pdf_path = "gpmc.pdf"
-loader = PyMuPDFLoader(pdf_path)
-documents = loader.load()
+try:
+    pdf_path = "gpmc.pdf"
+    loader = PyMuPDFLoader(pdf_path)
+    documents = loader.load()
+    print(f"Loaded {len(documents)} document(s) from {pdf_path}.")
+except Exception as e:
+    print(f"Error loading the PDF: {str(e)}")
+    raise ValueError(f"Error loading the PDF: {str(e)}")
 
 # Split documents into smaller chunks
-text_splitter = CharacterTextSplitter(chunk_size=4000, chunk_overlap=4)
-docs = text_splitter.split_documents(documents)
+try:
+    text_splitter = CharacterTextSplitter(chunk_size=4000, chunk_overlap=4)
+    docs = text_splitter.split_documents(documents)
+    print(f"Document split into {len(docs)} chunks.")
+except Exception as e:
+    print(f"Error splitting documents: {str(e)}")
+    raise ValueError(f"Error splitting documents: {str(e)}")
 
 # Use sentence-transformers/all-MiniLM-L6-v2 model for embeddings
 repo_id = "sentence-transformers/all-MiniLM-L6-v2"
-embeddings = HuggingFaceEmbeddings(model_name=repo_id)
+try:
+    embeddings = HuggingFaceEmbeddings(model_name=repo_id)
+except Exception as e:
+    print(f"Error loading embeddings model: {str(e)}")
+    raise ValueError(f"Error loading embeddings model: {str(e)}")
 
 # Set up Pinecone for storing embeddings
-docsearch = Pinecone.from_documents(docs, embeddings, index_name=index_name)
+try:
+    docsearch = Pinecone.from_documents(docs, embeddings, index_name=index_name)
+    print(f"Pinecone index populated with document embeddings.")
+except Exception as e:
+    print(f"Error setting up Pinecone: {str(e)}")
+    raise ValueError(f"Error setting up Pinecone: {str(e)}")
 
 # Set up Hugging Face model
-llm = HuggingFaceEndpoint(
-    repo_id=repo_id, 
-    temperature=0.8, 
-    top_k=50, 
-    huggingfacehub_api_token=HUGGINGFACE_API_TOKEN
-)
+try:
+    llm = HuggingFaceEndpoint(
+        repo_id=repo_id, 
+        temperature=0.8, 
+        top_k=50, 
+        huggingfacehub_api_token=HUGGINGFACE_API_TOKEN
+    )
+    print("HuggingFace LLM set up successfully.")
+except Exception as e:
+    print(f"Error setting up HuggingFace model: {str(e)}")
+    raise ValueError(f"Error setting up HuggingFace model: {str(e)}")
 
 # Chatbot class to handle queries
 class Chatbot:
     def ask(self, question):
         # Retrieve relevant document chunks
-        retriever = docsearch.as_retriever()
-        relevant_docs = retriever.get_relevant_documents(question)  # Correct method here
-        
-        # Get the context from the relevant documents
-        context = "\n".join([doc.page_content for doc in relevant_docs])  # Use 'page_content' to get the text
-        
-        # Combine context with the question to create a prompt
-        prompt = f"Context: {context}\nQuestion: {question}\nAnswer:"
-        
-        # Generate the answer using the Hugging Face model
-        response = llm(prompt=prompt)  # Pass the 'prompt' as required by HuggingFaceEndpoint
-        return response
+        try:
+            retriever = docsearch.as_retriever()
+            relevant_docs = retriever.get_relevant_documents(question)
+            
+            # Get the context from the relevant documents
+            context = "\n".join([doc.page_content for doc in relevant_docs])  # Use 'page_content' to get the text
+            
+            # Combine context with the question to create a prompt
+            prompt = f"Context: {context}\nQuestion: {question}\nAnswer:"
+            
+            # Generate the answer using the Hugging Face model
+            response = llm(prompt=prompt)  # Pass the 'prompt' as required by HuggingFaceEndpoint
+            return response
+        except Exception as e:
+            print(f"Error in Chatbot.ask: {str(e)}")
+            raise ValueError(f"Error in Chatbot.ask: {str(e)}")
 
 # Set up the Streamlit UI
 st.title("Chatbot")
