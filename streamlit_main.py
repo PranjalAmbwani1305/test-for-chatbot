@@ -55,12 +55,6 @@ try:
                 region='us-east-1'
             )
         )
-        print(f"Index {index_name} created successfully.")
-    else:
-        print(f"Index {index_name} already exists.")
-except Exception as e:
-    print(f"Error details: {str(e)}")  # Provide more error details
-    raise ValueError(f"Error creating Pinecone index: {str(e)}")
 
 # Load the PDF document
 pdf_path = "gpmc.pdf"
