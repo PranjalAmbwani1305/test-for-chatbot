@@ -9,9 +9,11 @@ from langchain.vectorstores import Pinecone
 from langchain.memory import ConversationBufferMemory
 from langchain.chains import ConversationalRetrievalChain
 from langchain.llms import HuggingFaceHub
+from os
 
 # Access the API key from Streamlit secrets
-PINECONE_API_KEY = st.secrets["PINECONE_API_KEY"]
+os.environ['HUGGINGFACE_API_KEY'] = st.secrets["HUGGINGFACE_API_KEY"]
+os.environ['PINECONE_API_KEY'] = st.secrets["PINECONE_API_KEY"]
 
 # Function to extract text from PDFs
 def get_pdf_text(pdf_docs):
