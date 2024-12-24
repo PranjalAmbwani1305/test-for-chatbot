@@ -17,15 +17,21 @@ PINECONE_ENV = os.getenv("PINECONE_ENV")
 PINECONE_INDEX_NAME = os.getenv("PINECONE_INDEX_NAME")
 HUGGINGFACE_API_TOKEN = os.getenv("HUGGINGFACE_API_TOKEN")
 
+# Initialize Pinecone
+pc = pinecone.Pinecone(api_key=PINECONE_API_KEY, environment=PINECONE_ENV)
+
+# Initialize embeddings (outside the try block)
+embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2", huggingfacehub_api_token=HUGGINGFACE_API_TOKEN)
+
 try:
     doc_store = Pinecone.from_existing_index(index_name=PINECONE_INDEX_NAME, embedding=embeddings)
     st.success("Document store loaded from existing index!")
 except Exception as e:
     st.error(f"Failed to load existing index: {e}")
     try:
-        pinecone.create_index(
+        pc.create_index(
             name=PINECONE_INDEX_NAME,
-            dimension=384,
+            dimension=embeddings.embed_query("Sample").__len__(),  # Dynamic dimension
             metric="cosine"
         )
         st.success(f"Index '{PINECONE_INDEX_NAME}' created successfully!")
@@ -34,7 +40,6 @@ except Exception as e:
     except Exception as create_error:
         st.error(f"Failed to create index: {create_error}")
         st.stop()
-
 
 st.title("Chatbot")
 pdf_path = "gpmc.pdf"
@@ -71,10 +76,9 @@ if doc_store is not None:
     Question: {question}
     Helpful Answer:"""
     QA_PROMPT = PromptTemplate(template=template, input_variables=["context", "question"])
-    
-    llm_repo_id = "google/flan-t5-xl" 
-    llm = HuggingFaceHub(repo_id=llm_repo_id, model_kwargs={"temperature":0.5, "max_length":512}, huggingfacehub_api_token=HUGGINGFACE_API_TOKEN)
 
+    # Correct way to use dyumat/mistral-7b-chat-pdf
+    llm = HuggingFaceHub(repo_id="dyumat/mistral-7b-chat-pdf", model_kwargs={"temperature": 0.5, "max_length": 1024}, huggingfacehub_api_token=HUGGINGFACE_API_TOKEN) # Increased max_length
     qa = RetrievalQA.from_chain_type(llm=llm, chain_type="stuff", retriever=doc_store.as_retriever(), return_source_documents=True, chain_type_kwargs={"prompt": QA_PROMPT})
 
     query = st.text_input("Enter your query:")
