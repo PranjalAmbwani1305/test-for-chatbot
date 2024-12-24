@@ -36,7 +36,6 @@ try:
     index_exists = PINECONE_INDEX_NAME in pc.list_indexes().names()
     if index_exists:
         doc_store = LangchainPinecone.from_existing_index(index_name=PINECONE_INDEX_NAME, embedding=embeddings)
-        st.success("Document store loaded from existing index!")
     else:
         pc.create_index(
             name=PINECONE_INDEX_NAME,
@@ -66,7 +65,7 @@ except Exception as e:
     st.stop()
 
 chunk_size = 500
-text_chunks = [pdf_text[i : i + chunk_size] for i in range(0, len(pdf_text), chunk_size)]
+text_chunks = [pdf_text[i:i + chunk_size] for i in range(0, len(pdf_text), chunk_size)]
 
 if doc_store is not None:
     with st.spinner("Indexing document..."):
@@ -74,11 +73,16 @@ if doc_store is not None:
         for i in range(0, len(text_chunks), batch_size):
             i_end = min(i + batch_size, len(text_chunks))
             batch = text_chunks[i:i_end]
-            ids = [str(x) for x in range(i, i_end)]
+            ids = [str(i + j) for j in range(len(batch))]
             embeds = embeddings.embed_documents(batch)
             metadata = [{"text": text} for text in batch]
             vectors = [(ids[j], embeds[j], metadata[j]) for j in range(len(batch))]
-            doc_store.upsert(vectors=vectors)
+            
+            try:
+                doc_store.upsert(vectors=vectors)
+            except Exception as e:
+                st.error(f"Error during upsert: {e}")
+                st.stop()
         st.success("Document indexed successfully!")
 
     template = """Use the following pieces of context to answer the question at the end. If you don't know the answer, just say that you don't know, don't try to make up an answer.
