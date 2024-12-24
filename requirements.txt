@@ -1,10 +1,9 @@
-langchain>=0.0.170
-pinecone-client>=2.2.1
-sentence-transformers
-transformers
-streamlit
-PyPDF2
-python_dotenv
-huggingface_hub
-pymupdf
-langchain-community
+chromadb== 0.5.3
+pysqlite3-binary
+protobuf==3.20.*
+streamlit==1.36.0
+pypdf==4.2.0
+langchain==0.2.5
+langchain-community==0.2.5
+langchain-huggingface==0.0.3
+python-dotenv
