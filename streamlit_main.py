@@ -10,33 +10,45 @@ from langchain.memory import ConversationBufferMemory
 from langchain.chains import ConversationalRetrievalChain
 from langchain.llms import HuggingFaceHub
 
+# Load environment variables
 load_dotenv()
 
-# Initialize Pinecone with the new method
+# Initialize Pinecone client
 pinecone_client = pinecone.Client(api_key=os.getenv("PINECONE_API_KEY"), environment="us-east1-gcp")
 
-def extract_text_from_pdfs(pdf_paths):
+def extract_text_from_pdfs(pdf_files):
+    """
+    Extract text from uploaded PDF files.
+    """
     text = ""
-    for pdf_path in pdf_paths:
-        with open(pdf_path, 'rb') as pdf_file:
-            pdf_reader = PdfReader(pdf_file)
-            for page in pdf_reader.pages:
-                text += page.extract_text()
+    for pdf_file in pdf_files:
+        pdf_reader = PdfReader(pdf_file)
+        for page in pdf_reader.pages:
+            text += page.extract_text()
     return text
 
 def split_text_into_chunks(text, chunk_size=1000, overlap=200):
+    """
+    Split text into manageable chunks for embedding.
+    """
     splitter = CharacterTextSplitter(separator="\n", chunk_size=chunk_size, chunk_overlap=overlap)
     return splitter.split_text(text)
 
 def generate_embeddings_for_chunks(text_chunks):
+    """
+    Generate embeddings for each chunk of text using HuggingFace model.
+    """
     embeddings_model = HuggingFaceInstructEmbeddings(model_name="hkunlp/instructor-xl")
     return [embeddings_model.embed(chunk) for chunk in text_chunks]
 
 def initialize_pinecone_vector_store(text_chunks, embeddings):
+    """
+    Initialize the Pinecone vector store and upload embeddings.
+    """
     index_name = "chatbot"
     try:
         if index_name not in pinecone_client.list_indexes():
-            pinecone_client.create_index(index_name, dimension=embeddings[0].shape[0])
+            pinecone_client.create_index(index_name, dimension=len(embeddings[0]))
     except AttributeError as e:
         st.error(f"Error while interacting with Pinecone: {e}")
         return None
@@ -45,9 +57,12 @@ def initialize_pinecone_vector_store(text_chunks, embeddings):
     ids = [str(i) for i in range(len(text_chunks))]
     pinecone_index.upsert(vectors=zip(ids, embeddings))
 
-    return Pinecone(index=pinecone_index, embedding_function=embeddings)
+    return Pinecone(index=pinecone_index, embedding_function=generate_embeddings_for_chunks)
 
 def create_conversational_chain(vectorstore):
+    """
+    Create a conversational chain using HuggingFace LLM and vector store retriever.
+    """
     llm = HuggingFaceHub(repo_id="google/flan-t5-xxl", model_kwargs={"temperature": 0.5, "max_length": 512})
     memory = ConversationBufferMemory(memory_key='chat_history', return_messages=True)
     return ConversationalRetrievalChain.from_llm(
@@ -57,6 +72,9 @@ def create_conversational_chain(vectorstore):
     )
 
 def handle_conversation(user_question):
+    """
+    Handle user queries using the conversational chain.
+    """
     response = st.session_state.conversation({'question': user_question})
     st.session_state.chat_history = response['chat_history']
 
@@ -67,7 +85,10 @@ def handle_conversation(user_question):
             st.write(f"**Bot**: {message.content}")
 
 def main():
-    st.set_page_config(page_title="Chat with PDFs", page_icon=":books:")
+    """
+    Main function to initialize and run the chatbot application.
+    """
+   
 
     if "conversation" not in st.session_state:
         st.session_state.conversation = None
@@ -77,15 +98,17 @@ def main():
     st.title("Chatbot with PDF Document Integration")
     user_question = st.text_input("Ask a question about the document:")
 
-    pdf_paths = ["gpmc.pdf"]
+    uploaded_files = st.file_uploader("Upload PDF files", type=["pdf"], accept_multiple_files=True)
 
-    with st.spinner("Processing PDFs and initializing the conversation..."):
-        raw_text = extract_text_from_pdfs(pdf_paths)
-        text_chunks = split_text_into_chunks(raw_text)
-        embeddings = generate_embeddings_for_chunks(text_chunks)
-        vectorstore = initialize_pinecone_vector_store(text_chunks, embeddings)
-        if st.session_state.conversation is None:
-            st.session_state.conversation = create_conversational_chain(vectorstore)
+    if uploaded_files:
+        with st.spinner("Processing PDFs and initializing the conversation..."):
+            raw_text = extract_text_from_pdfs(uploaded_files)
+            text_chunks = split_text_into_chunks(raw_text)
+            embeddings = generate_embeddings_for_chunks(text_chunks)
+            vectorstore = initialize_pinecone_vector_store(text_chunks, embeddings)
+            
+            if vectorstore and st.session_state.conversation is None:
+                st.session_state.conversation = create_conversational_chain(vectorstore)
 
     if user_question:
         handle_conversation(user_question)
