@@ -2,7 +2,7 @@ import os
 from dotenv import load_dotenv
 import streamlit as st
 from PyPDF2 import PdfReader
-from pinecone import Pinecone as PineconeClient, ServerlessSpec
+from pinecone import Pinecone as PineconeClient, ServerlessSpec, PineconeApiException
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain.vectorstores import Pinecone as LangchainPinecone
 from langchain.chains import RetrievalQA
@@ -10,46 +10,56 @@ from langchain.llms import HuggingFaceHub
 from langchain.prompts import PromptTemplate
 from huggingface_hub import login
 
+# Load environment var
 load_dotenv()
 
-# Load environment variables
+# Serect
 PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
 PINECONE_ENV = os.getenv("PINECONE_ENV")
 PINECONE_INDEX_NAME = os.getenv("PINECONE_INDEX_NAME")
 HUGGINGFACE_API_TOKEN = os.getenv("HUGGINGFACE_API_TOKEN")
 HUGGINGFACE_REPO_ID = os.getenv("HUGGINGFACE_REPO_ID")
 
-# Login to HuggingFace Hub
+#  Hugging Face
 login(HUGGINGFACE_API_TOKEN)
 
-# Initialize Pinecone client
-pc = PineconeClient(api_key=PINECONE_API_KEY, environment=PINECONE_ENV)
+#  Pinecone client
+try:
+    pc = PineconeClient(api_key=PINECONE_API_KEY)
+except Exception as e:
+    st.error(f"Error initializing Pinecone: {e}")
+    st.stop()
 
-# Create Pinecone index if it doesn't exist
-if PINECONE_INDEX_NAME not in pc.list_indexes():
-    pc.create_index(
-        name=PINECONE_INDEX_NAME,
-        dimension=346,  # Specify the correct dimension for your embeddings
-        metric='cosine',
-        spec=ServerlessSpec(
-            cloud='aws', 
-            region='us-east-1'  # Adjust region if needed
+# index
+try:
+    if PINECONE_INDEX_NAME not in pc.list_indexes():
+        # Adjust dimension based on your embeddings model
+        dimension = 384  # For 'sentence-transformers/all-MiniLM-L6-v2'
+        pc.create_index(
+            name=PINECONE_INDEX_NAME,
+            dimension=dimension,
+            metric='cosine',
+            spec=ServerlessSpec(cloud='aws', region='us-east-1')
         )
-    )
-    st.success(f"Index '{PINECONE_INDEX_NAME}' created successfully!")
+        st.success(f"Index '{PINECONE_INDEX_NAME}' created successfully!")
+    else:
+        st.success(f"Index '{PINECONE_INDEX_NAME}' already exists.")
+except PineconeApiException as e:
+    st.error(f"Pinecone API Exception: {e}")
+    st.stop()
 
-# Load embeddings from HuggingFace
+#  embeddings
 try:
     embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
 except Exception as e:
     st.error(f"Error initializing embeddings: {e}")
     st.stop()
 
-# Set up the chatbot interface
+# chatbot 
 st.title("Chatbot")
 pdf_path = "gpmc.pdf"
 
-# Load and read the PDF document
+# Load and read the PDF doc
 try:
     pdf_reader = PdfReader(pdf_path)
     pdf_text = ""
@@ -62,15 +72,18 @@ except Exception as e:
     st.error(f"Error reading PDF: {e}")
     st.stop()
 
-# Chunk the text into smaller parts for embedding
+# chunk the text
 chunk_size = 500
 text_chunks = [pdf_text[i:i + chunk_size] for i in range(0, len(pdf_text), chunk_size)]
 
-# Initialize document store (Pinecone vector store)
-index = pc.index(PINECONE_INDEX_NAME)  # Connect to the existing Pinecone index
-doc_store = LangchainPinecone.from_existing_index(index_name=PINECONE_INDEX_NAME, embedding=embeddings)
+# t0 document store
+try:
+    doc_store = LangchainPinecone.from_existing_index(index_name=PINECONE_INDEX_NAME, embedding=embeddings)
+except Exception as e:
+    st.error(f"Error initializing document store: {e}")
+    st.stop()
 
-# Index the document text into Pinecone
+#  document into Pinecone
 if doc_store is not None:
     with st.spinner("Indexing document..."):
         batch_size = 32
@@ -81,15 +94,15 @@ if doc_store is not None:
             embeds = embeddings.embed_documents(batch)
             metadata = [{"text": text} for text in batch]
             vectors = [(ids[j], embeds[j], metadata[j]) for j in range(len(batch))]
-            
+
             try:
-                index.upsert(vectors=vectors)
+                pc.index(PINECONE_INDEX_NAME).upsert(vectors=vectors)
             except Exception as e:
                 st.error(f"Error during upsert: {e}")
                 st.stop()
         st.success("Document indexed successfully!")
 
-    # Set up the question-answering system
+    # question-answering system
     template = """Use the following pieces of context to answer the question at the end. If you don't know the answer, just say that you don't know, don't try to make up an answer.
 
     {context}
@@ -98,7 +111,7 @@ if doc_store is not None:
     Helpful Answer:"""
     QA_PROMPT = PromptTemplate(template=template, input_variables=["context", "question"])
 
-    # Initialize the language model for QA
+    #model for QA
     llm = HuggingFaceHub(repo_id=HUGGINGFACE_REPO_ID, model_kwargs={"temperature": 0.5, "max_length": 1024}, huggingfacehub_api_token=HUGGINGFACE_API_TOKEN)
 
     # Set up the QA chain with the retriever from Pinecone
