@@ -2,12 +2,12 @@ import os
 from dotenv import load_dotenv
 import streamlit as st
 from huggingface_hub import login, hf_api
-from langchain.vectorstores import Pinecone  
+from langchain.vectorstores import Pinecone
 from langchain.embeddings import HuggingFaceEmbeddings
 from langchain.text_splitter import CharacterTextSplitter
 from langchain_community.document_loaders import PyMuPDFLoader
 from langchain.llms import HuggingFaceEndpoint
-from pinecone import Pinecone as PineconeClient, ServerlessSpec  
+from pinecone import Pinecone as PineconeClient, ServerlessSpec
 
 # Load environment variables from .env file
 load_dotenv()
@@ -42,7 +42,7 @@ except Exception as e:
     raise ValueError(f"Pinecone client initialization failed: {str(e)}")
 
 # Create Pinecone index if it doesn't exist
-index_name = "textembedding"
+index_name = PINECONE_INDEX_NAME or "textembedding"  # Default to 'textembedding' if not provided
 if index_name not in pc.list_indexes():
     print(f"Creating index: {index_name}")
     try:
@@ -62,7 +62,7 @@ else:
     print(f"Index {index_name} already exists.")
 
 # Load the PDF document
-pdf_path = "gpmc.pdf"
+pdf_path = "gpmc.pdf"  # Ensure this path is correct or modify accordingly
 loader = PyMuPDFLoader(pdf_path)
 documents = loader.load()
 
@@ -88,9 +88,13 @@ llm = HuggingFaceEndpoint(
 # Chatbot class to handle queries
 class Chatbot:
     def ask(self, question):
-        # Retrieve relevant document chunks
+        # Retrieve relevant document chunks using the retriever
         retriever = docsearch.as_retriever()
         relevant_docs = retriever.get_relevant_documents(question)  # Correct method here
+        
+        # If no relevant documents are found, inform the user
+        if not relevant_docs:
+            return "Sorry, I couldn't find relevant information. Please try rephrasing your question."
         
         # Get the context from the relevant documents
         context = "\n".join([doc.page_content for doc in relevant_docs])  # Use 'page_content' to get the text
@@ -116,4 +120,3 @@ if query:
             st.write("Answer:", response)
         except Exception as e:
             st.error(f"Error: {e}")
-
