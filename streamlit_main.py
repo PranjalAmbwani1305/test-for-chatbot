@@ -72,7 +72,7 @@ def handle_conversation(user_question):
         except Exception as e:
             st.error(f"An error occurred during conversation handling: {e}")
     else:
-        st.warning("The conversation has not been initialized yet. Please upload a document first.")
+        st.warning("The conversation has not been initialized yet. Please ensure the PDF is processed correctly.")
 
 def extract_text_from_pdf(pdf_file_path):
     """
@@ -89,16 +89,17 @@ def main():
     """
     Main function to initialize and run the chatbot application.
     """
-    st.set_page_config(page_title="Chat")
+    st.set_page_config(page_title="Chat with GMP PDF", page_icon="📚")
 
     if "conversation" not in st.session_state:
         st.session_state.conversation = None
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = []
 
-    st.title("Chatbot")
+    st.title("Chatbot with GMP PDF Document Integration")
     user_question = st.text_input("Ask a question about the document:")
 
+    # Assuming the file is stored locally at the specified path
     pdf_file_path = "gmpc.pdf"  # Specify the local PDF file path
 
     if os.path.exists(pdf_file_path):
