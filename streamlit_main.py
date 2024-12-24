@@ -28,6 +28,18 @@ try:
     st.success("Document store created successfully!")
 except Exception as e:
     st.error(f"Failed to create document store: {e}")
+    doc_store = Pinecone.from_existing_index(index_name=PINECONE_INDEX_NAME)
+
+    query = "example query"
+    query_embedding = embeddings.embed_query(query)
+
+    results = doc_store.similarity_search(query, k=5)  
+    st.write(f"Search results: {results}")
+    
+    st.success("Document store created and query executed successfully!")
+
+except Exception as e:
+    st.error(f"Failed to create document store: {e}")
     
 st.title("Chatbot")
 
