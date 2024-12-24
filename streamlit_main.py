@@ -18,7 +18,9 @@ def generate_embeddings_for_chunks(text_chunks):
     Generate embeddings for each chunk of text using HuggingFace model.
     """
     embeddings_model = HuggingFaceInstructEmbeddings(model_name="hkunlp/instructor-xl")
-    return [embeddings_model.embed(chunk) for chunk in text_chunks]
+    embeddings = [embeddings_model.embed(chunk) for chunk in text_chunks]
+    print(f"Generated {len(embeddings)} embeddings.")  # Debug print
+    return embeddings
 
 def initialize_pinecone_vector_store(text_chunks, embeddings):
     """
@@ -39,6 +41,7 @@ def initialize_pinecone_vector_store(text_chunks, embeddings):
         ids = [str(i) for i in range(len(text_chunks))]
         pinecone_index.upsert(vectors=zip(ids, embeddings))
 
+        print(f"Uploaded {len(ids)} embeddings to Pinecone.")  # Debug print
         return Pinecone(index=pinecone_index, embedding_function=generate_embeddings_for_chunks)
     except Exception as e:
         st.error(f"Error initializing Pinecone vector store: {e}")
@@ -50,6 +53,7 @@ def create_conversational_chain(vectorstore):
     """
     llm = HuggingFaceHub(repo_id="google/flan-t5-xxl", model_kwargs={"temperature": 0.5, "max_length": 512})
     memory = ConversationBufferMemory(memory_key='chat_history', return_messages=True)
+    print("Creating conversation chain...")  # Debug print
     return ConversationalRetrievalChain.from_llm(
         llm=llm,
         retriever=vectorstore.as_retriever(),
@@ -84,7 +88,10 @@ def extract_text_from_pdf(pdf_file_path):
     """
     try:
         loader = PyMuPDFLoader(pdf_file_path)
-        return loader.load()
+        documents = loader.load()
+        text = "\n".join([doc.page_content for doc in documents])  # Assuming loader returns documents with `page_content`
+        print(f"Extracted {len(text)} characters from the PDF.")  # Debug print
+        return text
     except Exception as e:
         st.error(f"Failed to extract text from PDF: {e}")
         return ""
@@ -93,18 +100,17 @@ def main():
     """
     Main function to initialize and run the chatbot application.
     """
-    st.set_page_config(page_title="Chat with GMP PDF", page_icon="📚")
 
     if "conversation" not in st.session_state:
         st.session_state.conversation = None
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = []
 
-    st.title("Chatbot with GMP PDF Document Integration")
+    st.title("Chatbot")
     user_question = st.text_input("Ask a question about the document:")
 
     # Specify the local path to the GMP PDF
-    pdf_file_path = "gmp.pdf"  # Use the correct path to the gmp.pdf file here
+    pdf_file_path = "gmpc.pdf"  # Use the correct path to the gmp.pdf file here
 
     if os.path.exists(pdf_file_path):
         with st.spinner("Processing GMP PDF and initializing the conversation..."):
@@ -115,6 +121,7 @@ def main():
                     st.success(f"Successfully extracted {len(raw_text)} characters from the PDF.")
                     # Split the extracted text into chunks based on newlines or other criteria
                     text_chunks = raw_text.split("\n")  # Or split differently as per your needs
+                    print(f"Split text into {len(text_chunks)} chunks.")  # Debug print
                     # Generate embeddings for the text chunks
                     embeddings = generate_embeddings_for_chunks(text_chunks)
                     # Initialize Pinecone vector store and upload embeddings
