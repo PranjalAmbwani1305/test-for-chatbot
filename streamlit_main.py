@@ -25,7 +25,7 @@ embeddings = HuggingFaceEmbeddings(model_name=model_name)
 
 doc_store = Pinecone(index_name, embeddings.embed_query, "text")
 
-st.title("PDF Query Chatbot")
+st.title("Chatbot")
 
 pdf_path = "gpmc.pdf"
 pdf_reader = PdfReader(pdf_path)
