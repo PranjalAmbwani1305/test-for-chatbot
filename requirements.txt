@@ -6,4 +6,4 @@ huggingface-hub
 pinecone-client
 python-dotenv
 pymupdf
-
+PyPDF2
