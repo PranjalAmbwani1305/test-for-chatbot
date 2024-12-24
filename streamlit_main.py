@@ -16,7 +16,7 @@ PINECONE_ENV = os.getenv("PINECONE_ENV")
 HUGGINGFACE_API_TOKEN = os.getenv("HUGGINGFACE_API_TOKEN")
 
 pinecone.init(api_key=PINECONE_API_KEY, environment=PINECONE_ENV)
-index_name = "pdf-query-chatbot"
+index_name = "textembedding"
 if index_name not in pinecone.list_indexes():
     pinecone.create_index(index_name, dimension=768)
 
@@ -27,7 +27,7 @@ doc_store = Pinecone(index_name, embeddings.embed_query, "text")
 
 st.title("PDF Query Chatbot")
 
-pdf_path = "your_pdf_file.pdf"  # Path to the PDF file
+pdf_path = "gpmc.pdf"
 pdf_reader = PdfReader(pdf_path)
 pdf_text = ""
 for page in pdf_reader.pages:
