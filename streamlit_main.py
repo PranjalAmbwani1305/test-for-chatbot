@@ -26,17 +26,24 @@ index_name = "textembedding"
 # Initialize Pinecone client
 pc = PineconeClient(api_key=PINECONE_API_KEY)
 
-# Create Pinecone index if it doesn't exist
-if index_name not in pc.list_indexes():
-    pc.create_index(
-        name=index_name,
-        dimension=384,  # dimension of sentence embeddings
-        metric='cosine',
-        spec=ServerlessSpec(
-            cloud='aws', 
-            region='us-east-1'
+# Check if the index already exists, and if not, create it
+try:
+    if index_name not in pc.list_indexes():
+        print(f"Creating index: {index_name}")
+        pc.create_index(
+            name=index_name,
+            dimension=384,  # dimension of sentence embeddings
+            metric='cosine',
+            spec=ServerlessSpec(
+                cloud='aws', 
+                region='us-east-1'
+            )
         )
-    )
+        print(f"Index {index_name} created successfully.")
+    else:
+        print(f"Index {index_name} already exists.")
+except Exception as e:
+    print(f"Error creating index: {e}")
 
 # Load the PDF document
 pdf_path = "gpmc.pdf"
