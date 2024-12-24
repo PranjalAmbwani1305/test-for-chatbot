@@ -71,7 +71,7 @@ class Chatbot:
         relevant_docs = retriever.get_relevant_documents(question)  # Correct method here
         
         # Get the context from the relevant documents
-        context = "\n".join([doc['text'] for doc in relevant_docs])
+        context = "\n".join([doc.page_content for doc in relevant_docs])  # Use 'page_content' to get the text
         
         # Generate the answer using the Hugging Face model
         response = llm.invoke({"context": context, "question": question})
